@@ -22,7 +22,7 @@ def get_gemini_response(input):
     Returns:
         str: The generated response text.
     """
-    model = genai.GenerativeModel("gemini-pro")
+    model = genai.GenerativeModel("gemini-1.5-flash")
     response = model.generate_content(input)
     return response.text
 
@@ -63,9 +63,16 @@ def getResume(msg, cvs_folder):
                 else:
                     attachment.save(customFilename=attachment.longFilename)
 
-                    # Déplacer le fichier dans le bon dossier
+                    # Move the file to the correct folder
                     saved_path = os.path.join(os.getcwd(), attachment.longFilename)  # Chemin où le fichier a été sauvegardé
                     final_path = os.path.join(cvs_folder, attachment.longFilename)   # Chemin final
+
+                    # If the file already exists, remove it
+                    if os.path.exists(final_path):
+                        logging.info(f"Replacing existing file: {final_path}")
+                        os.remove(final_path)
+
+
                     os.rename(saved_path, final_path)
 
         else:
@@ -105,7 +112,9 @@ Pour l'année, merci de fournir une réponse avec seulement les 4 chiffres de l'
 CV: {text}
 
 Je veux une réponse en un seul string ayant la structure suivante :
-{{"Mail":"","Année de diplomation":"", "Compétences":""}}
+{{"Mail": "exemple@email.com", "Année de diplomation": "YYYY", "Compétences": "compétence1, compétence2, ..."}}
+
+Merci de respecter la structure demandée ! Ne rajoute pas "json" devant.
 """
 
 ## streamlit app
