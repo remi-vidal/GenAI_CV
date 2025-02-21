@@ -1,103 +1,56 @@
 import logging
 import os
+import json
 import time
 import streamlit as st
 import google.generativeai as genai
 import pandas as pd
 import extract_msg
 
+from google.generativeai.types import GenerationConfig
 from dotenv import load_dotenv
-from utils import anonymize_cv, extract_text_from_pdf
+from utils import getResume, anonymize_cv, extract_text_from_pdf
 
 load_dotenv()  ## load all our environment variables
 
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-def get_gemini_response(input):
+def get_gemini_response(input_text):
     """
-    Generates a response using the Gemini generative model.
+    Generates a response using the Gemini generative model with JSON output.
 
     Args:
-        input (str): The input string to generate a response for.
+        input_text (str): The input string to generate a response for.
 
     Returns:
-        str: The generated response text.
+        dict: The generated response as a JSON object.
     """
-    # model = genai.GenerativeModel("gemini-1.5-flash")
-    model = genai.GenerativeModel("gemini-pro")
-    response = model.generate_content(input)
-    return response.text
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    response = model.generate_content(
+        input_text,
+        generation_config=GenerationConfig(
+            response_mime_type="application/json"
+        ),
+    )
+    
+    return json.loads(response.text)
 
-
-def getResume(msg, cvs_folder):
-    """
-    Processes the attachments in the provided message to retrieve a resume.
-    Args:
-        msg: The message object containing attachments.
-        cvs_folder: The folder where the resume should be saved.
-    Raises:
-        ValueError: If an attachment's name is None.
-        Exception: If there are no attachments, or if an attachment's extension is not .pdf, 
-                   or if there is an error when getting the resume.
-    Logs:
-        Info: Logs the number of attachments if present.
-        Error: Logs errors related to attachment name, unsupported extension, 
-               absence of attachments, and general errors when getting the resume.
-    """
-
-    try:
-        # Check for any attachments
-        if msg.attachments:
-            logging.info("There is %d attachement(s)....", len(msg.attachments))
-
-            for attachment in msg.attachments:
-
-                if attachment.longFilename is None:
-                    logging.error("attachement name is None")
-                    raise ValueError("attachement name is None")
-
-
-                _, extension = os.path.splitext(attachment.longFilename)
-
-                if extension != ".pdf":
-                    logging.error(f"Unsupported extension {extension}")
-                    return None
-                
-                # Temporary save
-                attachment.save(customFilename=attachment.longFilename)
-
-                # Move the file to the correct folder
-                saved_path = os.path.join(os.getcwd(), attachment.longFilename)  # Chemin où le fichier a été sauvegardé
-                final_path = os.path.join(cvs_folder, attachment.longFilename)   # Chemin final
-
-                # If the file already exists, remove it
-                if os.path.exists(final_path):
-                    logging.info(f"Replacing existing file: {final_path}")
-                    os.remove(final_path)
-
-
-                os.rename(saved_path, final_path)
-                return final_path
-        else:
-            logging.error("No attachment found")
-            return None
-
-
-    except Exception as e:
-        logging.error(f"Error when getting resume: {e}")
-        raise None
 
 
 # Prompt Template
 input_prompt = """
 Tu joues le rôle d'un recruteur data qui doit extraire des informations clés d'un CV.
 Un(e) candidat(e) a envoyé son CV par mail.
-Retrouve l'année de diplomation et les 3 compétences techniques clés dans le CV ci-dessous.
 
+Retrouve l'année de diplomation et les 5 compétences techniques data clés dans le CV ci-dessous.
+
+Pour l'année, fais attention car parfois une formation est spécifiée avec les dates de début et de fin.
+Par exemple : 09/2022 - 06/2024 ou bien 2021 à 2022. Dans ces cas-là, il faut aller chercher l'année de fin, c'est-à-dire
+respectivement 2024 et 2022.
 CV: {text}
 
 Je veux une réponse en un seul string ayant la structure suivante :
-{{"Année de diplomation": "YYYY", "Compétences": "compétence1, compétence2, compétence3"}}
+{{"Année de diplomation": "YYYY", "Compétences": "compétence1, compétence2, compétence3, compétence4, compétence5"}}
 """
 
 ## Streamlit app
@@ -112,7 +65,7 @@ if submit:
     batch_size = 15  # Nombre max de requêtes par minute
 
     # Get the list of all .msg files
-    msg_files = [f for f in os.listdir(mails_folder) if f.endswith(".msg")][:5]
+    msg_files = [f for f in os.listdir(mails_folder) if f.endswith(".msg")]
     total_mails = len(msg_files)
     processed_mails = 0
 
@@ -145,10 +98,10 @@ if submit:
 
                 all_responses.append(
                 {
-                    "email": "N/A",
-                    "nom": " ".join(noms_from_email),
-                    "année": "N/A",
-                    "compétences": "N/A"
+                    "Mail": "N/A",
+                    "Nom": " ".join(noms_from_email),
+                    "Diplôme": "N/A",
+                    "Compétences Tech": "N/A"
                 }
             ) 
             else:  # If a file has been successfully saved
@@ -160,11 +113,11 @@ if submit:
                 if text_anonymise == "":
                     all_responses.append(
                         {
-                            "email": "N/A",
-                            "nom": " ".join(noms_from_email),
-                            "année": "N/A",
-                            "compétences": "N/A",
-                        }
+                    "Mail": "N/A",
+                    "Nom": " ".join(noms_from_email),
+                    "Diplôme": "N/A",
+                    "Compétences Tech": "N/A"
+                    }
                     )
 
                 # print("Texte anonymisé :", text_anonymise)
@@ -175,38 +128,29 @@ if submit:
                     formatted_prompt = input_prompt.format(text=text_anonymise)
                     response = get_gemini_response(formatted_prompt)
                     print("Réponse : ", response)
-                    try : 
-                        response_data = eval(response)  # Assuming the response is a string representation of a dictionary
-                    except:
-                        continue
+                    
+                    # response_data = eval(response)  # Assuming the response is a string representation of a dictionary
+                    
                     all_responses.append(
                         {
-                            "email": extracted_email,
-                            "nom": " ".join(noms_from_email),
-                            "année": response_data["Année de diplomation"],
-                            "compétences": response_data["Compétences"],
+                            "Mail": extracted_email,
+                            "Nom": " ".join(noms_from_email),
+                            "Diplôme": response["Année de diplomation"],
+                            "Compétences Tech": response["Compétences"],
                         }
                     )  # On retourne le texte anonymisé + l'email et le nom extraits
 
             # Update progress
             processed_mails += 1
             progress_bar.progress(processed_mails / total_mails)
-            progress_text.text(f"Processed {processed_mails} of {total_mails} mails")
+            progress_text.text(f"{processed_mails} mails traités sur {total_mails}")
 
         if i + batch_size < total_mails:
-            st.text("Pause de 1 minute pour respecter la limite d'API...")
+            st.text("Pause de 1 minute pour respecter le quota de l'API...")
             time.sleep(60)
 
     # Create a DataFrame
     df = pd.DataFrame(all_responses)
-    # Save the DataFrame to a CSV file
-    csv_file = "output.csv"
-    df.to_csv(csv_file, index=False)
 
-    # Provide a download link for the CSV file
-    st.download_button(
-        label="Download CSV",
-        data=open(csv_file, "rb").read(),
-        file_name=csv_file,
-        mime="text/csv"
-    )
+    # Display the DataFrame as a table
+    st.dataframe(df)
