@@ -102,18 +102,3 @@ def anonymize_cv(text_cv, noms_from_email):
 
     return text_cv, extracted_email  # On retourne le texte anonymisé + l'email extrait
 
-# Exemple d'utilisation
-# text_cv = """jean marie dupont
-# 07 86 12 34 56remi4567@holala.com
-# e0753681353 blabla
-# la 40 13 rue des Lavandières 13200 Arles"""
-
-# noms_from_email = ["Jean", "Dupont", "marie"]
-
-# text_anonymise, extracted_email = anonymize_cv(text_cv, noms_from_email)
-
-# print("Texte anonymisé :", text_anonymise)
-# print("Email extrait :", extracted_email)
-
-
-# print(extract_text_from_pdf("CVs/CV SBE.pdf"))
