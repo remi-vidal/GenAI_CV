@@ -5,6 +5,7 @@ import io
 import json
 import time
 import streamlit as st
+import shutil
 import google.generativeai as genai
 import google.api_core.exceptions
 import pandas as pd
@@ -187,3 +188,8 @@ if uploaded_files:
     df = df.sort_values(by="Job").reset_index(drop=True)
     # Display the DataFrame as a table
     st.dataframe(df)
+
+
+    if os.path.exists(cvs_folder):
+        shutil.rmtree(cvs_folder)  # Remove folder and its content
+        os.makedirs(cvs_folder)  # Recreate folder if another script needs it
