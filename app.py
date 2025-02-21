@@ -19,7 +19,7 @@ from utils import getResume, anonymize_cv, extract_text_from_pdf
 # genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 api_key = st.secrets["GOOGLE_API_KEY"]
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+genai.configure(api_key=api_key)
 
 
 def get_gemini_response(input_text, max_retries=5, base_wait=30):
