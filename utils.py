@@ -116,4 +116,4 @@ def anonymize_cv(text_cv, noms_from_email):
 # print("Email extrait :", extracted_email)
 
 
-# print(extract_text_from_pdf("data/CVs/CV SBE.pdf"))
+# print(extract_text_from_pdf("CVs/CV SBE.pdf"))

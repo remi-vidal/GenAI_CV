@@ -84,13 +84,12 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
-    # mails_folder = "data/mails"
-    cvs_folder = "data/CVs"
+
+    cvs_folder = "CVs"
     all_responses = []
     batch_size = 15  # Nombre max de requêtes par minute
 
     # Get the list of all .msg files
-    # msg_files = [f for f in os.listdir(mails_folder) if f.endswith(".msg")]
     total_mails = len(uploaded_files)
     processed_mails = 0
 
@@ -162,8 +161,6 @@ if uploaded_files:
                     formatted_prompt = input_prompt.format(text=text_anonymise)
                     response = get_gemini_response(formatted_prompt)
                     print("Réponse : ", response)
-
-                    # response_data = eval(response)  # Assuming the response is a string representation of a dictionary
 
                     all_responses.append(
                         {   
