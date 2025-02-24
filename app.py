@@ -11,18 +11,18 @@ import google.api_core.exceptions
 import pandas as pd
 import extract_msg
 from google.generativeai.types import GenerationConfig
-from utils import getResume, anonymize_cv, extract_text_from_pdf
+# from utils import getResume, anonymize_cv, extract_linkedin_infos, extract_text_from_pdf
+from utils import *
+
+from dotenv import load_dotenv
+load_dotenv()  ## load all our environment variables
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+PASSWORD = os.getenv("PASSWORD")
 
 
-# from dotenv import load_dotenv
-# load_dotenv()  ## load all our environment variables
-# genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-# PASSWORD = os.getenv("PASSWORD")
-
-
-api_key = st.secrets["GOOGLE_API_KEY"]
-genai.configure(api_key=api_key)
-PASSWORD = st.secrets["PASSWORD"]
+# api_key = st.secrets["GOOGLE_API_KEY"]
+# genai.configure(api_key=api_key)
+# PASSWORD = st.secrets["PASSWORD"]
 
 
 
@@ -74,6 +74,7 @@ def login():
 
     if st.button("Se connecter"):
         if password_input == PASSWORD:
+            st.success("✅ Accès autorisé !")
             st.session_state["authenticated"] = True
             st.rerun()
         else:
@@ -82,8 +83,6 @@ def login():
 if not st.session_state["authenticated"]:
     login()
 else:
-    st.success("✅ Accès autorisé !")
-    # Ton application ici
 
 
 
@@ -93,22 +92,23 @@ else:
     Un(e) candidat(e) a envoyé son CV par mail.
 
     Retrouve l'année de diplomation et les 5 compétences techniques data clés dans le CV ci-dessous.
+    J'ai également besoin de savoir si le candidat est freelance ou non.
 
     Pour l'année, fais attention car parfois une formation est spécifiée avec les dates de début et de fin.
     Par exemple : 09/2022 - 06/2024 ou bien 2021 à 2022. Dans ces cas-là, il faut aller chercher l'année de fin, c'est-à-dire
-    respectivement 2024 et 2022.
+    respectivement 2024 et 2022. De plus il peut y avoir plusieurs diplômes, dans ce cas, il faut prendre le plus récent.
+
 
     CV: {text}
 
     Je veux une réponse en un seul string ayant la structure suivante :
-    {{"Année de diplomation": "YYYY", "Compétences": "compétence1, compétence2, compétence3, compétence4, compétence5"}}
+    {{"Freelance" : "OUI/NON", "Année de diplomation": "YYYY", "Compétences": "compétence1, compétence2, compétence3, compétence4, compétence5"}}
     """
 
-    
 
     # Upload files via drag-and-drop
     uploaded_files = st.file_uploader(
-        "Glissez-Déposez vos fichiers .msg ici", 
+        "Glissez-déposez vos fichiers .msg ici :", 
         type=["msg"], 
         accept_multiple_files=True
     )
@@ -150,6 +150,13 @@ else:
                 msg_bytes = file.read()
                 msg = extract_msg.Message(io.BytesIO(msg_bytes))
 
+                # Extract the date from the email
+                date_envoi = msg.date.strftime("%Y-%m-%d")
+
+                # Extract LinkedIn title and LinkedIn address
+                title, address = extract_linkedin_infos(msg)
+                
+
                 # Resume extraction
                 final_path = getResume(msg, cvs_folder)
 
@@ -160,8 +167,12 @@ else:
                     all_responses.append(
                         {
                             "Job": job_name,
+                            "Date": date_envoi,
                             "Mail": "N/A",
                             "Nom": " ".join(noms_from_email),
+                            "Titre LInkedIn": title,
+                            "Adresse": address,
+                            "Freelance": "N/A",
                             "Diplôme": "N/A",
                             "Compétences Tech": "N/A",
                         }
@@ -176,8 +187,12 @@ else:
                         all_responses.append(
                             {
                                 "Job": job_name,
+                                "Date": date_envoi,
                                 "Mail": "N/A",
                                 "Nom": " ".join(noms_from_email),
+                                "Titre LInkedIn": title,
+                                "Adresse": address,
+                                "Freelance": "N/A",
                                 "Diplôme": "N/A",
                                 "Compétences Tech": "N/A",
                             }
@@ -195,8 +210,12 @@ else:
                         all_responses.append(
                             {   
                                 "Job": job_name,
+                                "Date": date_envoi,
                                 "Mail": extracted_email,
                                 "Nom": " ".join(noms_from_email),
+                                "Titre LInkedIn": title,
+                                "Adresse": address,
+                                "Freelance": response["Freelance"],
                                 "Diplôme": response["Année de diplomation"],
                                 "Compétences Tech": response["Compétences"],
                             }
@@ -215,8 +234,21 @@ else:
         # Create a DataFrame
         df = pd.DataFrame(all_responses)
         df = df.sort_values(by="Job").reset_index(drop=True)
-        # Display the DataFrame as a table
-        st.dataframe(df)
+
+        # Fonction de mise en forme
+        def highlight_rows(row):
+            color = ""
+            if str(row["Diplôme"]).isdigit() and int(row["Diplôme"]) <= 2020:
+                color = "background-color: lightgreen"
+            if row["Freelance"] == "OUI":
+                color = "background-color: lightblue"
+            return [color] * len(row)
+
+        # Appliquer le style
+        styled_df = df.style.apply(highlight_rows, axis=1)
+
+        # Afficher dans Streamlit
+        st.dataframe(styled_df)
 
 
         if os.path.exists(cvs_folder):

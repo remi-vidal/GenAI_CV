@@ -21,15 +21,13 @@ def getResume(msg, cvs_folder):
     """
 
     try:
-        # Check for any attachments
         if msg.attachments:
             logging.info("There is %d attachement(s)....", len(msg.attachments))
 
             for attachment in msg.attachments:
-
                 if attachment.longFilename is None:
-                    logging.error("attachement name is None")
-                    raise ValueError("attachement name is None")
+                    logging.error("Attachment name is None")
+                    raise ValueError("Attachment name is None")
 
                 _, extension = os.path.splitext(attachment.longFilename)
 
@@ -41,27 +39,51 @@ def getResume(msg, cvs_folder):
                 attachment.save(customFilename=attachment.longFilename)
 
                 # Move the file to the correct folder
-                saved_path = os.path.join(
-                    os.getcwd(), attachment.longFilename
-                )  # Chemin où le fichier a été sauvegardé
-                final_path = os.path.join(
-                    cvs_folder, attachment.longFilename
-                )  # Chemin final
+                saved_path = os.path.join(os.getcwd(), attachment.longFilename)
+                final_path = os.path.join(cvs_folder, attachment.longFilename)
 
                 # If the file already exists, remove it
                 if os.path.exists(final_path):
                     logging.info(f"Replacing existing file: {final_path}")
                     os.remove(final_path)
 
-                os.rename(saved_path, final_path)
-                return final_path
+                os.rename(saved_path, final_path)  # Déplacer le fichier vers le dossier final
+                return final_path  # Retourner le chemin du fichier
+
         else:
             logging.error("No attachment found")
             return None
 
     except Exception as e:
         logging.error(f"Error when getting resume: {e}")
-        raise None
+        return None
+
+def extract_linkedin_infos(message):
+    """
+    Extracts LinkedIn information from a given message.
+    This function searches for a specific pattern in the message body to extract
+    the title and address associated with a LinkedIn profile.
+    Args:
+        message (extract_msg.msg_classes.message.Message): Parser for Microsoft Outlook message files
+    Returns:
+        tuple: A tuple containing the extracted title and address. If the pattern
+               is not found, both title and address will be "N/A".
+    """
+
+    body = message.body
+
+    # On split en utilisant \t\r\n comme séparateur
+    parts = re.split(r'\t\r\n', body)
+
+    # Vérification que la liste contient assez d'éléments
+    if len(parts) > 4:
+        title = parts[3].strip()
+        address = parts[4].strip()
+        
+    else:
+        title = address = "N/A"
+
+    return title, address
 
 
 def extract_text_from_pdf(file):
