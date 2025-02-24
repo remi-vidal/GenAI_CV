@@ -11,8 +11,8 @@ import google.api_core.exceptions
 import pandas as pd
 import extract_msg
 from google.generativeai.types import GenerationConfig
-from utils import getResume, anonymize_cv, extract_linkedin_infos, extract_text_from_pdf
-# from utils import *
+# from utils import getResume, anonymize_cv, extract_linkedin_infos, extract_text_from_pdf
+from utils import *
 
 # from dotenv import load_dotenv
 # load_dotenv()  ## load all our environment variables
