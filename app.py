@@ -11,18 +11,18 @@ import google.api_core.exceptions
 import pandas as pd
 import extract_msg
 from google.generativeai.types import GenerationConfig
-# from utils import getResume, anonymize_cv, extract_linkedin_infos, extract_text_from_pdf
-from utils import *
+from utils import getResume, anonymize_cv, extract_linkedin_infos, extract_text_from_pdf
+# from utils import *
 
-from dotenv import load_dotenv
-load_dotenv()  ## load all our environment variables
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-PASSWORD = os.getenv("PASSWORD")
+# from dotenv import load_dotenv
+# load_dotenv()  ## load all our environment variables
+# genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+# PASSWORD = os.getenv("PASSWORD")
 
 
-# api_key = st.secrets["GOOGLE_API_KEY"]
-# genai.configure(api_key=api_key)
-# PASSWORD = st.secrets["PASSWORD"]
+api_key = st.secrets["GOOGLE_API_KEY"]
+genai.configure(api_key=api_key)
+PASSWORD = st.secrets["PASSWORD"]
 
 
 
