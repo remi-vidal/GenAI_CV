@@ -87,18 +87,23 @@ else:
     Tu joues le rôle d'un recruteur data qui doit extraire des informations clés d'un CV.
     Un(e) candidat(e) a envoyé son CV par mail.
 
-    Retrouve l'année de diplomation et les 5 compétences techniques data clés dans le CV ci-dessous.
-    J'ai également besoin de savoir si le candidat est freelance ou non.
+    Retrouve les  éléments suivants dans le CV :
+    - L'année de diplomation
+    - La durée totale d'expérience professionnelle cumulée en années
+    - Les 5 compétences techniques data clés
+    - Si le candidat est freelance ou non.
 
-    Pour l'année, fais attention car parfois une formation est spécifiée avec les dates de début et de fin.
+    Je veux une réponse en un seul string ayant la structure suivante :
+    {{"Freelance" : "OUI/NON", "Année de diplomation": "YYYY", "Expérience": "X", "Compétences": "compétence1, compétence2, compétence3, compétence4, compétence5"}}
+
+    Pour l'année de diplomation, fais attention car parfois une formation est spécifiée avec les dates de début et de fin.
     Par exemple : 09/2022 - 06/2024 ou bien 2021 à 2022. Dans ces cas-là, il faut aller chercher l'année de fin, c'est-à-dire
     respectivement 2024 et 2022. De plus il peut y avoir plusieurs diplômes, dans ce cas, il faut prendre le plus récent.
 
+    Pour la durée d'expérience, merci de ne pas compter les stages ou alternances, seulement les expériences professionnelles.
+    Par exemple, si le candidat a travaillé 6 mois en stage et 2 ans et demi en CDI, merci de renvoyer 2,5.
 
     CV: {text}
-
-    Je veux une réponse en un seul string ayant la structure suivante :
-    {{"Freelance" : "OUI/NON", "Année de diplomation": "YYYY", "Compétences": "compétence1, compétence2, compétence3, compétence4, compétence5"}}
     """
 
     # Upload files via drag-and-drop
@@ -160,15 +165,16 @@ else:
 
                     all_responses.append(
                         {
-                            "Job": job_name,
                             "Date": date_envoi,
-                            "Mail": "N/A",
-                            "Téléphone": "N/A",
+                            "Job": job_name,
                             "Nom": " ".join(noms_from_email),
                             "Titre LinkedIn": title,
                             "Adresse": address,
+                            "Mail": "N/A",
+                            "Téléphone": "N/A",
                             "Freelance": "N/A",
                             "Diplôme": "N/A",
+                            "Expérience": "N/A",
                             "Compétences Tech": "N/A",
                         }
                     )
@@ -187,15 +193,16 @@ else:
                     if text_anonymise == "": # If the PDF is an image
                         all_responses.append(
                             {
-                                "Job": job_name,
                                 "Date": date_envoi,
-                                "Mail": "N/A",
-                                "Téléphone": "N/A",
+                                "Job": job_name,
                                 "Nom": " ".join(noms_from_email),
                                 "Titre LinkedIn": title,
                                 "Adresse": address,
+                                "Mail": "N/A",
+                                "Téléphone": "N/A",
                                 "Freelance": "N/A",
                                 "Diplôme": "N/A",
+                                "Expérience": "N/A",
                                 "Compétences Tech": "N/A",
                             }
                         )
@@ -211,15 +218,16 @@ else:
 
                         all_responses.append(
                             {   
-                                "Job": job_name,
                                 "Date": date_envoi,
-                                "Mail": extracted_email,
-                                "Téléphone": extracted_phone,
+                                "Job": job_name,
                                 "Nom": " ".join(noms_from_email),
                                 "Titre LinkedIn": title,
                                 "Adresse": address,
+                                "Mail": extracted_email,
+                                "Téléphone": extracted_phone,
                                 "Freelance": response["Freelance"],
                                 "Diplôme": response["Année de diplomation"],
+                                "Expérience": response["Expérience"],
                                 "Compétences Tech": response["Compétences"],
                             }
                         )  # On retourne le texte anonymisé + l'email et le nom extraits
@@ -253,6 +261,6 @@ else:
         # Afficher dans Streamlit
         st.dataframe(styled_df)
 
-        # if os.path.exists(cvs_folder):
-        #     shutil.rmtree(cvs_folder)  # Remove folder and its content
-        #     os.makedirs(cvs_folder)  # Recreate folder if another script needs it
+        if os.path.exists(cvs_folder):
+            shutil.rmtree(cvs_folder)  # Remove folder and its content
+            os.makedirs(cvs_folder)  # Recreate folder if another script needs it
