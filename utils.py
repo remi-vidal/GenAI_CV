@@ -2,7 +2,7 @@ import re
 import os
 import PyPDF2 as pdf
 import logging
-
+from docx import Document
 
 def getResume(msg, cvs_folder):
     """
@@ -31,7 +31,7 @@ def getResume(msg, cvs_folder):
 
                 _, extension = os.path.splitext(attachment.longFilename)
 
-                if extension != ".pdf":
+                if extension not in [".pdf", ".docx"]:
                     logging.error(f"Unsupported extension {extension}")
                     return None
 
@@ -47,8 +47,8 @@ def getResume(msg, cvs_folder):
                     logging.info(f"Replacing existing file: {final_path}")
                     os.remove(final_path)
 
-                os.rename(saved_path, final_path)  # Déplacer le fichier vers le dossier final
-                return final_path  # Retourner le chemin du fichier
+                os.rename(saved_path, final_path)  # Move the file to the final folder
+                return final_path  # Return the file path
 
         else:
             logging.error("No attachment found")
@@ -103,6 +103,39 @@ def extract_text_from_pdf(file):
     text = text.replace("\x00", "").replace("\n", " ").strip()
     return text
 
+
+def extract_text_from_docx(file):
+    """
+    Extracts text from a DOCX file, including text from tables and paragraphs.
+    Args:
+        file (str): The path to the DOCX file.
+    Returns:
+        str: The extracted text with table cells separated by tabs, paragraphs separated by spaces, 
+             and non-breaking spaces replaced by regular spaces.
+    """
+    doc = Document(file)
+    text = []
+
+    # Extract text from tables
+    for table in doc.tables:
+        for row in table.rows:
+            row_text = [cell.text for cell in row.cells]
+            text.append("\t".join(row_text))  # Better column separation
+
+    # Extract text from paragraphs
+    for para in doc.paragraphs:
+        text.append(para.text)
+
+    cleaned_text = (
+        "\n".join(text)
+        .replace("\xa0", " ")
+        .replace("\n", " ")
+        .replace("\t", " ")
+        .strip()
+        )
+    return cleaned_text
+
+
 def anonymize_cv(text_cv, noms_from_email):
     # 1. Extraction de l'email avant anonymisation
     email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text_cv)
@@ -123,4 +156,3 @@ def anonymize_cv(text_cv, noms_from_email):
     text_cv = re.sub(r'\d{1,5}\s+\w+(?:\s+\w+)*(?:,\s*\w+(?:\s+\w+)*)?,?\s*\d{5}', '[ADRESSE]', text_cv)
 
     return text_cv, extracted_email  # On retourne le texte anonymisé + l'email extrait
-

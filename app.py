@@ -11,18 +11,17 @@ import google.api_core.exceptions
 import pandas as pd
 import extract_msg
 from google.generativeai.types import GenerationConfig
-# from utils import getResume, anonymize_cv, extract_linkedin_infos, extract_text_from_pdf
 from utils import *
 
-# from dotenv import load_dotenv
-# load_dotenv()  ## load all our environment variables
-# genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-# PASSWORD = os.getenv("PASSWORD")
+from dotenv import load_dotenv
+load_dotenv()  ## load all our environment variables
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+PASSWORD = os.getenv("PASSWORD")
 
 
-api_key = st.secrets["GOOGLE_API_KEY"]
-genai.configure(api_key=api_key)
-PASSWORD = st.secrets["PASSWORD"]
+# api_key = st.secrets["GOOGLE_API_KEY"]
+# genai.configure(api_key=api_key)
+# PASSWORD = st.secrets["PASSWORD"]
 
 
 
@@ -155,12 +154,12 @@ else:
 
                 # Extract LinkedIn title and LinkedIn address
                 title, address = extract_linkedin_infos(msg)
-                
+
 
                 # Resume extraction
                 final_path = getResume(msg, cvs_folder)
 
-                if not final_path : #Notamment si c'est un word
+                if not final_path :
                     logging.error(f"Skipping email {filename}, no valid CV found.")
                     response_data = {"Année de diplomation": "N/A", "Compétences": "N/A"}
 
@@ -170,7 +169,7 @@ else:
                             "Date": date_envoi,
                             "Mail": "N/A",
                             "Nom": " ".join(noms_from_email),
-                            "Titre LInkedIn": title,
+                            "Titre LinkedIn": title,
                             "Adresse": address,
                             "Freelance": "N/A",
                             "Diplôme": "N/A",
@@ -178,7 +177,11 @@ else:
                         }
                     )
                 else:  # If a file has been successfully saved
-                    text_cv = extract_text_from_pdf(final_path)
+                    _, extension = os.path.splitext(final_path)
+                    if extension == ".pdf":
+                        text_cv = extract_text_from_pdf(final_path)
+                    elif extension == ".docx":
+                        text_cv = extract_text_from_docx(final_path)
 
                     # Anonymization
                     text_anonymise, extracted_email = anonymize_cv(text_cv, [name for name in noms_from_email if len(name) > 2])
@@ -190,7 +193,7 @@ else:
                                 "Date": date_envoi,
                                 "Mail": "N/A",
                                 "Nom": " ".join(noms_from_email),
-                                "Titre LInkedIn": title,
+                                "Titre LinkedIn": title,
                                 "Adresse": address,
                                 "Freelance": "N/A",
                                 "Diplôme": "N/A",
@@ -213,7 +216,7 @@ else:
                                 "Date": date_envoi,
                                 "Mail": extracted_email,
                                 "Nom": " ".join(noms_from_email),
-                                "Titre LInkedIn": title,
+                                "Titre LinkedIn": title,
                                 "Adresse": address,
                                 "Freelance": response["Freelance"],
                                 "Diplôme": response["Année de diplomation"],
