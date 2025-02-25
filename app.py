@@ -151,7 +151,7 @@ else:
                 msg = extract_msg.Message(io.BytesIO(msg_bytes))
 
                 # Extract the date from the email
-                date_envoi = msg.date.strftime("%Y-%m-%d")
+                date_envoi = msg.date
 
                 # Extract LinkedIn title and LinkedIn address
                 title, address = extract_linkedin_infos(msg)
@@ -244,7 +244,8 @@ else:
 
         # Create a DataFrame
         df = pd.DataFrame(all_responses)
-        df = df.sort_values(by="Job").reset_index(drop=True)
+        df = df.sort_values(by=["Job", "Date"], ascending=[True, True]).reset_index(drop=True)
+        df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")  # Reformatage après tri
 
         # Fonction de mise en forme
         def highlight_rows(row):
