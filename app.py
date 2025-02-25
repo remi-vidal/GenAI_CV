@@ -13,15 +13,15 @@ import extract_msg
 from google.generativeai.types import GenerationConfig
 from utils import *
 
-from dotenv import load_dotenv
-load_dotenv()  ## load all our environment variables
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-PASSWORD = os.getenv("PASSWORD")
+# from dotenv import load_dotenv
+# load_dotenv()  ## load all our environment variables
+# genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+# PASSWORD = os.getenv("PASSWORD")
 
 
-# api_key = st.secrets["GOOGLE_API_KEY"]
-# genai.configure(api_key=api_key)
-# PASSWORD = st.secrets["PASSWORD"]
+api_key = st.secrets["GOOGLE_API_KEY"]
+genai.configure(api_key=api_key)
+PASSWORD = st.secrets["PASSWORD"]
 
 
 def get_gemini_response(input_text, max_retries=5, base_wait=30):
