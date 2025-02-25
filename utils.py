@@ -141,18 +141,36 @@ def anonymize_cv(text_cv, noms_from_email):
     email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text_cv)
     extracted_email = email_match.group(0) if email_match else None
 
-    # 2. Suppression du nom et prénom, même s'ils sont collés à d'autres mots
+    # 2. Extraction du numéro de téléphone avant anonymisation
+    phone_pattern = re.compile(r'''
+        (?<!\d)                     # Ne pas être précédé par un chiffre
+        (?:\+?\d{1,3}[-.\s]?)?      # Code pays optionnel (ex: +33)
+        (?!2\d{3}[-.\s])            # Ne pas commencer par 2 suivi de 3 chiffres
+        (?:\(?[3-9]\d{1,3}\)?[-.\s]?)? # Code régional optionnel (ex: (01) ou 01)
+        (?:\d{2,4}[-.\s]?){2,3}     # Groupes de 2 à 4 chiffres séparés par des tirets, points ou espaces
+        \d{2,4}                     # Dernier groupe de 2 à 4 chiffres
+        (?!\d)                      # Ne pas être suivi par un chiffre
+    ''', re.VERBOSE)
+
+    # Récupérer tous les matchs
+    phone_matches = phone_pattern.findall(text_cv)
+
+    # Filtrer les matchs pour éliminer ceux qui commencent par "1" ou "2" pour éliminer  les années
+    filtered_matches = [match for match in phone_matches if not match.strip().startswith(('1', '2'))]
+    extracted_phone =filtered_matches[0] if filtered_matches else None
+    
+    # 3. Suppression du nom et prénom, même s'ils sont collés à d'autres mots
     for nom in sorted(noms_from_email, key=len, reverse=True):  # Trier pour éviter les conflits
         text_cv = re.sub(rf'(?i){re.escape(nom)}', '[ANONYMISÉ]', text_cv)
 
-    # 3. Suppression de l'email (remplacement après extraction)
+    # 4. Suppression de l'email (remplacement après extraction)
     text_cv = re.sub(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '[EMAIL]', text_cv)
 
-    # 4. Suppression des numéros de téléphone
-    # text_cv = re.sub(r'\b(\+?\d{1,3}[-.\s]?)?(\(?\d{2,4}\)?[-.\s]?)?\d{2,4}[-.\s]?\d{2,4}[-.\s]?\d{2,4}\b', '[TÉL]', text_cv)
-    text_cv = re.sub(r'(?<!\d)(\+?\d{1,3}[-.\s]?)?(\(?\d{2,4}\)?[-.\s]?)?\d{2,4}[-.\s]?\d{2,4}[-.\s]?\d{2,4}', '[TÉL]', text_cv)
-
-    # 5. Suppression de l'adresse postale (basique, peut être affiné)
+    # 5. Suppression des numéros de téléphone
+    if extracted_phone:
+        text_cv = text_cv.replace(extracted_phone, '[TÉL]')
+    
+    # 6. Suppression de l'adresse postale (basique, peut être affiné)
     text_cv = re.sub(r'\d{1,5}\s+\w+(?:\s+\w+)*(?:,\s*\w+(?:\s+\w+)*)?,?\s*\d{5}', '[ADRESSE]', text_cv)
 
-    return text_cv, extracted_email  # On retourne le texte anonymisé + l'email extrait
+    return text_cv, extracted_email, extracted_phone  # On retourne le texte anonymisé + l'email et le numéro de téléphone extraits

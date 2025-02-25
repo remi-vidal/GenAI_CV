@@ -24,7 +24,6 @@ PASSWORD = os.getenv("PASSWORD")
 # PASSWORD = st.secrets["PASSWORD"]
 
 
-
 def get_gemini_response(input_text, max_retries=5, base_wait=30):
     """
     Génère une réponse en gérant les erreurs de quota (429).
@@ -83,8 +82,6 @@ if not st.session_state["authenticated"]:
     login()
 else:
 
-
-
     # Prompt Template
     input_prompt = """
     Tu joues le rôle d'un recruteur data qui doit extraire des informations clés d'un CV.
@@ -103,7 +100,6 @@ else:
     Je veux une réponse en un seul string ayant la structure suivante :
     {{"Freelance" : "OUI/NON", "Année de diplomation": "YYYY", "Compétences": "compétence1, compétence2, compétence3, compétence4, compétence5"}}
     """
-
 
     # Upload files via drag-and-drop
     uploaded_files = st.file_uploader(
@@ -155,7 +151,6 @@ else:
                 # Extract LinkedIn title and LinkedIn address
                 title, address = extract_linkedin_infos(msg)
 
-
                 # Resume extraction
                 final_path = getResume(msg, cvs_folder)
 
@@ -168,6 +163,7 @@ else:
                             "Job": job_name,
                             "Date": date_envoi,
                             "Mail": "N/A",
+                            "Téléphone": "N/A",
                             "Nom": " ".join(noms_from_email),
                             "Titre LinkedIn": title,
                             "Adresse": address,
@@ -183,15 +179,18 @@ else:
                     elif extension == ".docx":
                         text_cv = extract_text_from_docx(final_path)
 
-                    # Anonymization
-                    text_anonymise, extracted_email = anonymize_cv(text_cv, [name for name in noms_from_email if len(name) > 2])
+                    # Mail + phone extraction, and anonymization
+                    text_anonymise, extracted_email, extracted_phone = anonymize_cv(
+                        text_cv, [name for name in noms_from_email if len(name) > 2]
+                    )
 
-                    if text_anonymise == "":
+                    if text_anonymise == "": # If the PDF is an image
                         all_responses.append(
                             {
                                 "Job": job_name,
                                 "Date": date_envoi,
                                 "Mail": "N/A",
+                                "Téléphone": "N/A",
                                 "Nom": " ".join(noms_from_email),
                                 "Titre LinkedIn": title,
                                 "Adresse": address,
@@ -215,6 +214,7 @@ else:
                                 "Job": job_name,
                                 "Date": date_envoi,
                                 "Mail": extracted_email,
+                                "Téléphone": extracted_phone,
                                 "Nom": " ".join(noms_from_email),
                                 "Titre LinkedIn": title,
                                 "Adresse": address,
@@ -253,7 +253,6 @@ else:
         # Afficher dans Streamlit
         st.dataframe(styled_df)
 
-
-        if os.path.exists(cvs_folder):
-            shutil.rmtree(cvs_folder)  # Remove folder and its content
-            os.makedirs(cvs_folder)  # Recreate folder if another script needs it
+        # if os.path.exists(cvs_folder):
+        #     shutil.rmtree(cvs_folder)  # Remove folder and its content
+        #     os.makedirs(cvs_folder)  # Recreate folder if another script needs it
