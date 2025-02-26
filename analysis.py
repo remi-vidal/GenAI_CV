@@ -168,7 +168,7 @@ def analysis_page():
                             "Adresse": address,
                             "Mail": "N/A",
                             "Téléphone": "N/A",
-                            "Freelance": "N/A",
+                            "Freelance": "OUI" if "freelance" in title.lower() else "N/A",
                             "Diplôme": "N/A",
                             "Expérience": "N/A",
                             "Compétences Tech": "N/A",
@@ -196,7 +196,7 @@ def analysis_page():
                                 "Adresse": address,
                                 "Mail": "N/A",
                                 "Téléphone": "N/A",
-                                "Freelance": "N/A",
+                                "Freelance": "OUI" if "freelance" in title.lower() else "N/A",
                                 "Diplôme": "N/A",
                                 "Expérience": "N/A",
                                 "Compétences Tech": "N/A",
@@ -211,6 +211,9 @@ def analysis_page():
                         formatted_prompt = input_prompt.format(text=text_anonymise)
                         response = get_gemini_response(formatted_prompt)
                         print("Réponse : ", response)
+                        
+                        # Check for a "freelance" mention in LinkedIn title
+                        is_freelance = "OUI" if "freelance" in title.lower() else response["Freelance"]
 
                         all_responses.append(
                             {   
@@ -221,7 +224,7 @@ def analysis_page():
                                 "Adresse": address,
                                 "Mail": extracted_email,
                                 "Téléphone": extracted_phone,
-                                "Freelance": response["Freelance"],
+                                "Freelance": is_freelance,
                                 "Diplôme": response["Année de diplomation"],
                                 "Expérience": response["Expérience"],
                                 "Compétences Tech": response["Compétences"],
