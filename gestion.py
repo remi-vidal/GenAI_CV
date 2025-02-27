@@ -31,9 +31,9 @@ def gestion_page():
 
     st.title("Gestion des candidatures")
     
-    # ⚡ Recharger la base MongoDB à chaque rechargement
-    if "df" not in st.session_state:
-        st.session_state.df = get_applications()
+    # # ⚡ Recharger la base MongoDB à chaque rechargement
+    # if "df" not in st.session_state:
+    st.session_state.df = get_applications()
 
     df = st.session_state.df  # Utilisation du cache local
 

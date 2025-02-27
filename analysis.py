@@ -11,6 +11,7 @@ import google.api_core.exceptions
 import pandas as pd
 import extract_msg
 from google.generativeai.types import GenerationConfig
+from pymongo import MongoClient
 from utils import *
 
 from dotenv import load_dotenv
@@ -20,6 +21,21 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 # api_key = st.secrets["GOOGLE_API_KEY"]
 # genai.configure(api_key=api_key)
 
+load_dotenv()
+MONGO_URI = os.getenv("MONGO_URI")
+client = MongoClient(MONGO_URI)
+db = client["ats_database"]
+collection = db["candidatures"]
+
+def insert_into_mongo(data):
+    """
+    Insère un document dans MongoDB uniquement si la combinaison de "Job" et "Nom" n'existe pas déjà.
+    """
+    if data["Job"] and data["Nom"] and collection.find_one({"Job": data["Job"], "Nom": data["Nom"]}):
+        logging.info(f"Candidat {data['Nom']} pour le job {data['Job']} déjà présent dans la base.")
+    else:
+        collection.insert_one(data)
+        logging.info(f"Candidat {data['Nom']} pour le job {data['Job']} ajouté à MongoDB.")
 
 def get_gemini_response(input_text, max_retries=5, base_wait=30):
     """
@@ -55,8 +71,6 @@ def get_gemini_response(input_text, max_retries=5, base_wait=30):
 
     st.error("Échec après plusieurs tentatives. Veuillez réessayer plus tard.")
     return {"Année de diplomation": "N/A", "Compétences": "N/A"}  # Valeurs par défaut si toutes les tentatives échouent
-
-
 
 # Prompt Template
 input_prompt = """
@@ -96,10 +110,6 @@ def analysis_page():
         type=["msg"], 
         accept_multiple_files=True
     )
-
-    # # Affichage des résultats si déjà en mémoire
-    # if st.session_state["analysis_results"] is not None:
-    #     st.dataframe(st.session_state["analysis_results"])
 
     # Si des fichiers sont importés, réinitialiser la DataFrame stockée
     if uploaded_files:
@@ -246,6 +256,9 @@ def analysis_page():
         df = df.sort_values(by=["Job", "Date"], ascending=[True, True]).reset_index(drop=True)
         df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")  # Reformatage après tri
 
+        # Sauvegarde des résultats (version non stylisée)
+        st.session_state["analysis_results"] = df
+        
         # Fonction de mise en forme
         def highlight_rows(row):
             color = ""
@@ -261,9 +274,12 @@ def analysis_page():
         # Afficher dans Streamlit
         st.dataframe(styled_df)
 
-        # Sauvegarde des résultats
-        st.session_state["analysis_results"] = styled_df
-
+        # Bouton pour mettre à jour la base de données
+        if st.button("Mettre à jour la base de données"):
+            with st.spinner("Mise à jour de la base de données en cours..."):
+                for candidate in all_responses:
+                    insert_into_mongo(candidate)
+            st.success("Base de données mise à jour avec succès !")
 
         if os.path.exists(cvs_folder):
             shutil.rmtree(cvs_folder)  # Remove folder and its content
