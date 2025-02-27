@@ -5,18 +5,18 @@ from pymongo import MongoClient
 import os
 from utils import highlight_rows
 
-from dotenv import load_dotenv
-load_dotenv()
-MONGO_URI = os.getenv("MONGO_URI")
-client = MongoClient(MONGO_URI)
-db = client["staging"]
-collection = db["data_test"]
-
-
-# MONGO_URI = st.secrets["MONGO_URI"]
+# from dotenv import load_dotenv
+# load_dotenv()
+# MONGO_URI = os.getenv("MONGO_URI")
 # client = MongoClient(MONGO_URI)
-# db = client["ats_database"]
-# collection = db["candidatures"]
+# db = client["staging"]
+# collection = db["data_test"]
+
+
+MONGO_URI = st.secrets["MONGO_URI"]
+client = MongoClient(MONGO_URI)
+db = client["ats_database"]
+collection = db["candidatures"]
 
 
 
