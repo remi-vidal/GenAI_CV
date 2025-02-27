@@ -1,14 +1,14 @@
 import streamlit as st
 import os
-from analysis import analysis_page
+from upload import upload_page
 from gestion import gestion_page
 
 
-# from dotenv import load_dotenv
-# load_dotenv()  ## load all our environment variables
-# PASSWORD = os.getenv("PASSWORD")
+from dotenv import load_dotenv
+load_dotenv()  ## load all our environment variables
+PASSWORD = os.getenv("PASSWORD")
 
-PASSWORD = st.secrets["PASSWORD"]
+# PASSWORD = st.secrets["PASSWORD"]
 
 st.set_page_config(layout="wide")  # Wide mode by default
 
@@ -17,9 +17,9 @@ st.markdown(
     """
     <style>
         section[data-testid="stSidebar"] {
-            width: 160px !important;
+            width: 189px !important;
             min-width: 50px;
-            max-width: 200px;
+            max-width: 250px;
         }
     </style>
     """,
@@ -42,20 +42,20 @@ if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
 if "current_page" not in st.session_state:
-    st.session_state["current_page"] = "Analyse"  # Page par défaut après connexion
+    st.session_state["current_page"] = "Upload"  # Page par défaut après connexion
 
 
 if not st.session_state["authenticated"]:
     login()
 else:
     # Barre latérale avec boutons de navigation
-    if st.sidebar.button("🔍 Analyse"):
-        st.session_state["current_page"] = "Analyse"
-    if st.sidebar.button("🗂️ Gestion"):
-        st.session_state["current_page"] = "Gestion"
+    if st.sidebar.button("📩 Importation"):
+        st.session_state["current_page"] = "Upload"
+    if st.sidebar.button("🗂️ Candidatures"):
+        st.session_state["current_page"] = "Applications"
     
     # Affichage de la page sélectionnée
-    if st.session_state["current_page"] == "Analyse":
-        analysis_page()
-    elif st.session_state["current_page"] == "Gestion":
+    if st.session_state["current_page"] == "Upload":
+        upload_page()
+    elif st.session_state["current_page"] == "Applications":
         gestion_page()

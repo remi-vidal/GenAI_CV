@@ -3,17 +3,20 @@ import streamlit as st
 import pandas as pd
 from pymongo import MongoClient
 import os
+from utils import highlight_rows
+
 from dotenv import load_dotenv
-
-# load_dotenv()
-# MONGO_URI = os.getenv("MONGO_URI")
-
-MONGO_URI = st.secrets["MONGO_URI"]
-
-
+load_dotenv()
+MONGO_URI = os.getenv("MONGO_URI")
 client = MongoClient(MONGO_URI)
-db = client["ats_database"]
-collection = db["candidatures"]
+db = client["staging"]
+collection = db["data_test"]
+
+
+# MONGO_URI = st.secrets["MONGO_URI"]
+# client = MongoClient(MONGO_URI)
+# db = client["ats_database"]
+# collection = db["candidatures"]
 
 
 
@@ -33,7 +36,7 @@ def get_applications():
 
 def gestion_page():
 
-    st.title("Gestion des candidatures")
+    st.title("Candidatures")
     
     # # ⚡ Recharger la base MongoDB à chaque rechargement
     # if "df" not in st.session_state:

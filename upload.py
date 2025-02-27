@@ -14,19 +14,20 @@ from google.generativeai.types import GenerationConfig
 from pymongo import MongoClient
 from utils import *
 
-# from dotenv import load_dotenv
-# load_dotenv()  ## load all our environment variables
-# genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-# MONGO_URI = os.getenv("MONGO_URI")
-
-api_key = st.secrets["GOOGLE_API_KEY"]
-genai.configure(api_key=api_key)
-MONGO_URI = st.secrets["MONGO_URI"]
-
-
+from dotenv import load_dotenv
+load_dotenv()  ## load all our environment variables
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+MONGO_URI = os.getenv("MONGO_URI")
 client = MongoClient(MONGO_URI)
-db = client["ats_database"]
-collection = db["candidatures"]
+db = client["staging"]
+collection = db["data_test"]
+
+# api_key = st.secrets["GOOGLE_API_KEY"]
+# genai.configure(api_key=api_key)
+# MONGO_URI = st.secrets["MONGO_URI"]
+# client = MongoClient(MONGO_URI)
+# db = client["ats_database"]
+# collection = db["candidatures"]
 
 def insert_into_mongo(data):
     """
@@ -81,11 +82,16 @@ Un(e) candidat(e) a envoyé son CV par mail.
 Retrouve les  éléments suivants dans le CV :
 - L'année de diplomation
 - La durée totale d'expérience professionnelle cumulée en années
+- Les entreprises associées aux expériences professionnelles (pas celles liées aux stages)
 - Les 5 compétences techniques data clés
 - Si le candidat est freelance ou non.
 
 Je veux une réponse en un seul string ayant la structure suivante :
-{{"Freelance" : "OUI/NON", "Année de diplomation": "YYYY", "Expérience": "X", "Compétences": "compétence1, compétence2, compétence3, compétence4, compétence5"}}
+{{"Freelance" : "OUI/NON",
+"Année de diplomation": "YYYY",
+"Expérience": "X",
+"Entreprises":"entreprise1, entreprise2, entreprise3",
+"Compétences": "compétence1, compétence2, compétence3, compétence4, compétence5"}}
 
 Pour l'année de diplomation, fais attention car parfois une formation est spécifiée avec les dates de début et de fin.
 Par exemple : 09/2022 - 06/2024 ou bien 2021 à 2022. Dans ces cas-là, il faut aller chercher l'année de fin, c'est-à-dire
@@ -98,10 +104,10 @@ CV: {text}
 """
 
 
-def analysis_page():
-    st.title("Analyse des CV")
+def upload_page():
+    st.title("Import des CV")
     
-    # Initialisation du stockage des résultats dans session_state
+    # Initialisation du stockage des résultats (#utile ?)
     if "analysis_results" not in st.session_state:
         st.session_state["analysis_results"] = None
 
@@ -120,6 +126,7 @@ def analysis_page():
     if st.session_state["analysis_results"] is not None and not uploaded_files:
         st.dataframe(st.session_state["analysis_results"])
 
+
     if uploaded_files:
         st.session_state["analysis_results"] = None  # Réinitialiser la DataFrame stockée
 
@@ -137,7 +144,6 @@ def analysis_page():
         pause_text = st.empty()
 
         # Batch processing .msg files
-
         for i in range(0, total_mails, batch_size):
             batch_files = uploaded_files[i:i + batch_size]
 
@@ -182,6 +188,7 @@ def analysis_page():
                             "Freelance": "OUI" if "freelance" in title.lower() else "N/A",
                             "Diplôme": "N/A",
                             "Expérience": "N/A",
+                            "Entreprises": "N/A",
                             "Compétences Tech": "N/A",
                         }
                     )
@@ -210,12 +217,10 @@ def analysis_page():
                                 "Freelance": "OUI" if "freelance" in title.lower() else "N/A",
                                 "Diplôme": "N/A",
                                 "Expérience": "N/A",
+                                "Entreprises": "N/A",
                                 "Compétences Tech": "N/A",
                             }
                         )
-
-                    # print("Texte anonymisé :", text_anonymise)
-                    # print("Email extrait :", extracted_email)
 
                     else:
                         # Si le CV a du contenu, on le fournit au LLM
@@ -238,9 +243,10 @@ def analysis_page():
                                 "Freelance": is_freelance,
                                 "Diplôme": response["Année de diplomation"],
                                 "Expérience": response["Expérience"],
+                                "Entreprises": response["Entreprises"],
                                 "Compétences Tech": response["Compétences"],
                             }
-                        )  # On retourne le texte anonymisé + l'email et le nom extraits
+                        )
 
                 # Update progress
                 processed_mails += 1
@@ -259,29 +265,25 @@ def analysis_page():
 
         # Sauvegarde des résultats (version non stylisée)
         st.session_state["analysis_results"] = df
-        
-        # Fonction de mise en forme
-        def highlight_rows(row):
-            color = ""
-            if str(row["Diplôme"]).isdigit() and int(row["Diplôme"]) <= 2020:
-                color = "background-color: lightgreen"
-            if row["Freelance"] == "OUI":
-                color = "background-color: lightblue"
-            return [color] * len(row)
 
-        # Appliquer le style
+
+        # Apply color coding
         styled_df = df.style.apply(highlight_rows, axis=1)
 
         # Afficher dans Streamlit
         st.dataframe(styled_df)
 
         # Bouton pour mettre à jour la base de données
-        if st.button("Mettre à jour la base de données"):
+        
+        if st.session_state["analysis_results"] is not None:
             with st.spinner("Mise à jour de la base de données en cours..."):
-                for candidate in all_responses:
+                for candidate in st.session_state["analysis_results"].to_dict('records'):
                     insert_into_mongo(candidate)
             st.success("Base de données mise à jour avec succès !")
+        else:
+            st.warning("Aucune analyse de CV disponible pour la mise à jour.")
 
+        # Remove CV folder
         if os.path.exists(cvs_folder):
-            shutil.rmtree(cvs_folder)  # Remove folder and its content
+            shutil.rmtree(cvs_folder)
             os.makedirs(cvs_folder)  # Recreate folder if another script needs it

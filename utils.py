@@ -174,3 +174,12 @@ def anonymize_cv(text_cv, noms_from_email):
     text_cv = re.sub(r'\d{1,5}\s+\w+(?:\s+\w+)*(?:,\s*\w+(?:\s+\w+)*)?,?\s*\d{5}', '[ADRESSE]', text_cv)
 
     return text_cv, extracted_email, extracted_phone  # On retourne le texte anonymisé + l'email et le numéro de téléphone extraits
+
+
+def highlight_rows(row):
+    color = ""
+    if str(row["Diplôme"]).isdigit() and int(row["Diplôme"]) <= 2020:
+        color = "background-color: lightgreen"
+    if row["Freelance"] == "OUI":
+        color = "background-color: lightblue"
+    return [color] * len(row)
