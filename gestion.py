@@ -5,8 +5,12 @@ from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
-MONGO_URI = os.getenv("MONGO_URI")
+# load_dotenv()
+# MONGO_URI = os.getenv("MONGO_URI")
+
+MONGO_URI = st.secrets["MONGO_URI"]
+
+
 client = MongoClient(MONGO_URI)
 db = client["ats_database"]
 collection = db["candidatures"]

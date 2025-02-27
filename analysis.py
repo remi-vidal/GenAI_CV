@@ -14,15 +14,16 @@ from google.generativeai.types import GenerationConfig
 from pymongo import MongoClient
 from utils import *
 
-from dotenv import load_dotenv
-load_dotenv()  ## load all our environment variables
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+# from dotenv import load_dotenv
+# load_dotenv()  ## load all our environment variables
+# genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+# MONGO_URI = os.getenv("MONGO_URI")
 
-# api_key = st.secrets["GOOGLE_API_KEY"]
-# genai.configure(api_key=api_key)
+api_key = st.secrets["GOOGLE_API_KEY"]
+genai.configure(api_key=api_key)
+MONGO_URI = st.secrets["MONGO_URI"]
 
-load_dotenv()
-MONGO_URI = os.getenv("MONGO_URI")
+
 client = MongoClient(MONGO_URI)
 db = client["ats_database"]
 collection = db["candidatures"]

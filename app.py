@@ -4,14 +4,11 @@ from analysis import analysis_page
 from gestion import gestion_page
 
 
-from dotenv import load_dotenv
-load_dotenv()  ## load all our environment variables
-PASSWORD = os.getenv("PASSWORD")
+# from dotenv import load_dotenv
+# load_dotenv()  ## load all our environment variables
+# PASSWORD = os.getenv("PASSWORD")
 
-
-
-# api_key = st.secrets["GOOGLE_API_KEY"]
-# PASSWORD = st.secrets["PASSWORD"]
+PASSWORD = st.secrets["PASSWORD"]
 
 st.set_page_config(layout="wide")  # Wide mode by default
 
