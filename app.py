@@ -4,11 +4,11 @@ from upload import upload_page
 from gestion import gestion_page
 
 
-# from dotenv import load_dotenv
-# load_dotenv()  ## load all our environment variables
-# PASSWORD = os.getenv("PASSWORD")
+from dotenv import load_dotenv
+load_dotenv()  ## load all our environment variables
+PASSWORD = os.getenv("PASSWORD")
 
-PASSWORD = st.secrets["PASSWORD"]
+# PASSWORD = st.secrets["PASSWORD"]
 
 st.set_page_config(layout="wide")  # Wide mode by default
 

@@ -6,18 +6,18 @@ from pymongo import MongoClient
 import os
 from utils import highlight_rows
 
-# from dotenv import load_dotenv
-# load_dotenv()
-# MONGO_URI = os.getenv("MONGO_URI")
-# client = MongoClient(MONGO_URI)
-# db = client["staging"]
-# collection = db["data_test"]
-
-
-MONGO_URI = st.secrets["MONGO_URI"]
+from dotenv import load_dotenv
+load_dotenv()
+MONGO_URI = os.getenv("MONGO_URI")
 client = MongoClient(MONGO_URI)
-db = client["ats_database"]
-collection = db["candidatures"]
+db = client["staging"]
+collection = db["data_test"]
+
+
+# MONGO_URI = st.secrets["MONGO_URI"]
+# client = MongoClient(MONGO_URI)
+# db = client["ats_database"]
+# collection = db["candidatures"]
 
 
 def get_applications():
@@ -45,22 +45,33 @@ def gestion_page():
     df = st.session_state.df  # Utilisation du cache local
 
     if not df.empty:
-
-        # Organisation des filtres en colonnes
-        col1, col2 = st.columns(2)
-
+        # FILTERS DEFINITION
+        col1, col2, col3 = st.columns(3)
+        
+        STATUT_MAPPING = {
+            0: "🟡 Non traité",
+            -1: "❌ Refus",
+            1: "📨 Formulaire envoyé",
+            2: "🛠️ En cours de qualification",
+            3: "✅ Go process"
+        }
+        statut_options = ["Tous"] + list(STATUT_MAPPING.values())
+        
         with col1:
-            date_selection = st.date_input("📅 Période de candidature", value=[], format="DD/MM/YYYY")
-            
+            statut_filter = st.selectbox("📌 Statut", statut_options)
+        
         with col2:
+            date_selection = st.date_input("📅 Période de candidature", value=[], format="DD/MM/YYYY")
+        
+        with col3:
             job_filter = st.selectbox("💼 Job", ["Tous"] + df["Job"].dropna().unique().tolist())
 
-        col3, col4 = st.columns(2)
-
-        with col3:
-            freelance_filter = st.selectbox("👨‍💻 Freelance", ["Tous"] + df["Freelance"].dropna().unique().tolist())
+        col4, col5 = st.columns(2)
 
         with col4:
+            freelance_filter = st.selectbox("👨‍💻 Freelance", ["Tous"] + df["Freelance"].dropna().unique().tolist())
+
+        with col5:
             df["Expérience"] = df["Expérience"].fillna(-1)  # Remplace NaN par -1
             experience_min, experience_max = st.slider(
                 "📊 Expérience",
@@ -69,25 +80,30 @@ def gestion_page():
                 (float(df["Expérience"].min()), float(df["Expérience"].max()))
             )
 
-        # Appliquer les filtres
-        if job_filter != "Tous":
-            df = df[df["Job"] == job_filter]
+        # APPLICATION DES FILTRES
+
+        if statut_filter != "Tous":
+            statut_numeric = {v: k for k, v in STATUT_MAPPING.items()}[statut_filter]
+            df = df[df["Statut"] == statut_numeric]
 
         # Vérifier si l'utilisateur a sélectionné une période avant d'appliquer le filtre
         if len(date_selection) == 2:
             start_date, end_date = date_selection
             df = df[(df["Date"] >= pd.Timestamp(start_date)) & (df["Date"] <= pd.Timestamp(end_date))]
 
+        if job_filter != "Tous":
+            df = df[df["Job"] == job_filter]
+
+
         # Fourchette expérience
         df = df[(df["Expérience"] >= experience_min) & (df["Expérience"] <= experience_max)]
         df["Expérience"] = df["Expérience"].replace(-1, float("nan"))  # Remettre NaN
-
 
         if freelance_filter != "Tous":
             df = df[df["Freelance"] == freelance_filter]
 
         # Sélecteur de colonnes pour le tri
-        sort_columns = st.multiselect("↕️ Trier par :", df.columns)
+        sort_columns = st.multiselect("↕️ Trier par :", df.columns, placeholder="Sélectionnez une ou plusieurs colonnes")
 
         # Définir l'ordre de tri pour chaque colonne sélectionnée
         sort_orders = [st.checkbox(f"Ordre croissant pour {col}", value=True) for col in sort_columns]
@@ -96,17 +112,31 @@ def gestion_page():
         if sort_columns:
             df = df.sort_values(by=sort_columns, ascending=sort_orders)
 
+        df = df.reset_index(drop=True)  # Évite la colonne d'index après filtrage
+
+        # Transformation des statuts en affichage lisible avec emojis
+        df["Statut"] = df["Statut"].map(STATUT_MAPPING)
+
+        # Options du menu déroulant (clé = affichage, valeur = stockage en base)
+        statut_options = {v: k for k, v in STATUT_MAPPING.items()}
+
         edited_df = st.data_editor(
             df,
             column_config={
                 "Date": st.column_config.DatetimeColumn(
-                    "Date",
-                    format="D MMM YYYY",
-                    step=60,
+                    "Date", format="D MMM YYYY", step=60
+                ),
+                "Statut": st.column_config.SelectboxColumn(
+                    "Statut", options=list(statut_options.keys()), required=True, pinned=True
                 ),
             },
+            height=500,
+            # hide_index=True,
             num_rows="dynamic",
         )  # Édition interactive
+
+        # Convertir les statuts affichés (emoji) en valeurs numériques avant enregistrement
+        edited_df["Statut"] = edited_df["Statut"].map(statut_options)
 
         # Sauvegarde des ID avant édition
         original_ids = set(df["_id"].astype(str))
