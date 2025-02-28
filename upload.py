@@ -187,7 +187,7 @@ def upload_page():
                             "Téléphone": "N/A",
                             "Freelance": "OUI" if "freelance" in title.lower() else "N/A",
                             "Diplôme": "N/A",
-                            "Expérience": "N/A",
+                            "Expérience": "",
                             "Entreprises": "N/A",
                             "Compétences Tech": "N/A",
                         }
@@ -216,7 +216,7 @@ def upload_page():
                                 "Téléphone": "N/A",
                                 "Freelance": "OUI" if "freelance" in title.lower() else "N/A",
                                 "Diplôme": "N/A",
-                                "Expérience": "N/A",
+                                "Expérience": "",
                                 "Entreprises": "N/A",
                                 "Compétences Tech": "N/A",
                             }
@@ -242,7 +242,7 @@ def upload_page():
                                 "Téléphone": extracted_phone,
                                 "Freelance": is_freelance,
                                 "Diplôme": response["Année de diplomation"],
-                                "Expérience": response["Expérience"],
+                                "Expérience": float(response["Expérience"]),
                                 "Entreprises": response["Entreprises"],
                                 "Compétences Tech": response["Compétences"],
                             }
@@ -260,15 +260,15 @@ def upload_page():
 
         # Create a DataFrame
         df = pd.DataFrame(all_responses)
+        df["Expérience"] = pd.to_numeric(df["Expérience"], errors="coerce")
         df = df.sort_values(by=["Job", "Date"], ascending=[True, True]).reset_index(drop=True)
-        df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")  # Reformatage après tri
 
         # Sauvegarde des résultats (version non stylisée)
         st.session_state["analysis_results"] = df
 
 
         # Apply color coding
-        styled_df = df.style.apply(highlight_rows, axis=1)
+        styled_df = df.style.format({"Expérience": "{:.1f}"}).apply(highlight_rows, axis=1)
 
         # Afficher dans Streamlit
         st.dataframe(styled_df)
