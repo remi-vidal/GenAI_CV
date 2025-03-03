@@ -1,10 +1,9 @@
 from bson import ObjectId
-from datetime import datetime, timedelta
 import streamlit as st
 import pandas as pd
 from pymongo import MongoClient
 import os
-from utils import highlight_rows
+from utils import generate_download_link
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -47,22 +46,22 @@ def gestion_page():
     if not df.empty:
         # FILTERS DEFINITION
         col1, col2, col3 = st.columns(3)
-        
+
         STATUT_MAPPING = {
             0: "🟡 Non traité",
             -1: "❌ Refus",
             1: "📨 Formulaire envoyé",
-            2: "🛠️ En cours de qualification",
+            2: "🛠️ En cours de qualif.",
             3: "✅ Go process"
         }
         statut_options = ["Tous"] + list(STATUT_MAPPING.values())
-        
+
         with col1:
             statut_filter = st.selectbox("📌 Statut", statut_options)
-        
+
         with col2:
             date_selection = st.date_input("📅 Période de candidature", value=[], format="DD/MM/YYYY")
-        
+
         with col3:
             job_filter = st.selectbox("💼 Job", ["Tous"] + df["Job"].dropna().unique().tolist())
 
@@ -89,11 +88,16 @@ def gestion_page():
         # Vérifier si l'utilisateur a sélectionné une période avant d'appliquer le filtre
         if len(date_selection) == 2:
             start_date, end_date = date_selection
-            df = df[(df["Date"] >= pd.Timestamp(start_date)) & (df["Date"] <= pd.Timestamp(end_date))]
+            # Convertir en Timestamp fixe l'heure à minuit :pour end_date, il est nécessaire 
+            # de rajouter 1 jour et soustraire 1 seconde pour inclure toute la journée
+            start_date = pd.Timestamp(start_date)
+            end_date = pd.Timestamp(end_date) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+
+            df = df[(df["Date"] >= start_date) & (df["Date"] <= end_date)]
+
 
         if job_filter != "Tous":
             df = df[df["Job"] == job_filter]
-
 
         # Fourchette expérience
         df = df[(df["Expérience"] >= experience_min) & (df["Expérience"] <= experience_max)]
@@ -114,26 +118,47 @@ def gestion_page():
 
         df = df.reset_index(drop=True)  # Évite la colonne d'index après filtrage
 
+        df["CV"] = df["_id"].apply(lambda oid: generate_download_link(collection.find_one({"_id": oid}).get("CV")))
+
+
+        # Création de colonnes pour afficher la DataFrame et les liens CV côte à côte
+        col_cv, col_df = st.columns([1, 30])  # Ajuste les proportions selon tes préférences
+
+        with col_cv:
+            st.markdown('<div style="height: 44px;"></div>', unsafe_allow_html=True)  # Ajoute un espace blanc
+            # Utilisation de st.markdown() pour rendre les liens cliquables
+            for i, row in df.iterrows():
+                st.markdown(
+            f'<div style="margin-bottom: 9.2px;">{row["CV"]}</div>', 
+            unsafe_allow_html=True
+        )
+
         # Transformation des statuts en affichage lisible avec emojis
         df["Statut"] = df["Statut"].map(STATUT_MAPPING)
 
         # Options du menu déroulant (clé = affichage, valeur = stockage en base)
         statut_options = {v: k for k, v in STATUT_MAPPING.items()}
 
-        edited_df = st.data_editor(
-            df,
-            column_config={
-                "Date": st.column_config.DatetimeColumn(
-                    "Date", format="D MMM YYYY", step=60
-                ),
-                "Statut": st.column_config.SelectboxColumn(
-                    "Statut", options=list(statut_options.keys()), required=True, pinned=True
-                ),
-            },
-            height=500,
-            # hide_index=True,
-            num_rows="dynamic",
-        )  # Édition interactive
+        with col_df:
+        
+            edited_df = st.data_editor(
+                df.drop(columns=["CV"]),
+                column_config={
+                    "CV": st.column_config.TextColumn("CV", help="Cliquez pour télécharger"),
+                    "Date": st.column_config.DatetimeColumn(
+                        "Date", format="D MMM YYYY", step=60
+                    ),
+                    "Statut": st.column_config.SelectboxColumn(
+                        "Statut",
+                        options=list(statut_options.keys()),
+                        required=True,
+                        pinned=True,
+                    ),
+                },
+                height=2000,
+                # hide_index=True,
+                num_rows="dynamic",
+            )  # Édition interactive
 
         # Convertir les statuts affichés (emoji) en valeurs numériques avant enregistrement
         edited_df["Statut"] = edited_df["Statut"].map(statut_options)

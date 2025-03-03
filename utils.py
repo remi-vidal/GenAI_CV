@@ -2,6 +2,8 @@ import re
 import os
 import PyPDF2 as pdf
 import logging
+import base64
+from bson.binary import Binary
 from docx import Document
 
 def getResume(msg, cvs_folder):
@@ -183,3 +185,41 @@ def highlight_rows(row):
     if row["Freelance"] == "OUI":
         color = "background-color: lightblue"
     return [color] * len(row)
+
+
+def guess_extension(cv_bytes):
+    """ Détecte l'extension du fichier en fonction de sa signature binaire. """
+    signatures = {
+        b"%PDF": "pdf",  # PDF
+        b"PK\x03\x04": "docx",  # DOCX (et autres fichiers ZIP)
+        b"\xd0\xcf\x11\xe0": "doc"  # DOC (format binaire ancien)
+    }
+    for sig, ext in signatures.items():
+        if cv_bytes.startswith(sig):
+            return ext
+    return "bin"  # Par défaut, inconnu
+
+def generate_download_link(cv_binary, filename="cv"):
+    """ Génère un lien de téléchargement HTML pour un fichier binaire. """
+    if isinstance(cv_binary, Binary):  # Vérifier si c'est un objet Binary de MongoDB
+        cv_bytes = cv_binary.decode()
+    elif isinstance(cv_binary, bytes):
+        cv_bytes = cv_binary
+    else:
+        return "✖️"
+
+    file_extension = guess_extension(cv_bytes)
+    full_filename = f"{filename}.{file_extension}"
+
+    # Déterminer le type MIME
+    mime_types = {
+        "pdf": "application/pdf",
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "doc": "application/msword",
+    }
+    mime_type = mime_types.get(file_extension, "application/octet-stream")  # Fallback générique
+
+    # Encodage base64
+    b64 = base64.b64encode(cv_bytes).decode()
+    href = f'<a href="data:{mime_type};base64,{b64}" download="{full_filename}">📄</a>'
+    return href

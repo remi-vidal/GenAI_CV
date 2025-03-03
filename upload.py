@@ -12,6 +12,7 @@ import pandas as pd
 import extract_msg
 from google.generativeai.types import GenerationConfig
 from pymongo import MongoClient
+from bson import Binary
 from utils import *
 
 from dotenv import load_dotenv
@@ -124,7 +125,7 @@ def upload_page():
 
     # Affichage des résultats uniquement s'ils existent et qu'aucun fichier n'est en cours de traitement
     if st.session_state["analysis_results"] is not None and not uploaded_files:
-        st.dataframe(st.session_state["analysis_results"])
+        st.dataframe(st.session_state["analysis_results"].drop(columns=["CV"], errors="ignore"))
 
 
     if uploaded_files:
@@ -199,6 +200,10 @@ def upload_page():
                     elif extension == ".docx":
                         text_cv = extract_text_from_docx(final_path)
 
+                    # Pour le rajout du CV : extraction en binaire
+                    with open(final_path, "rb") as pdf_file:
+                        binary_pdf = Binary(pdf_file.read())
+
                     # Mail + phone extraction, and anonymization
                     text_anonymise, extracted_email, extracted_phone = anonymize_cv(
                         text_cv, [name for name in noms_from_email if len(name) > 2]
@@ -219,6 +224,7 @@ def upload_page():
                                 "Expérience": "",
                                 "Entreprises": "N/A",
                                 "Compétences Tech": "N/A",
+                                "CV": binary_pdf
                             }
                         )
 
@@ -245,6 +251,7 @@ def upload_page():
                                 "Expérience": float(response["Expérience"]),
                                 "Entreprises": response["Entreprises"],
                                 "Compétences Tech": response["Compétences"],
+                                "CV": binary_pdf
                             }
                         )
 
@@ -269,13 +276,12 @@ def upload_page():
 
 
         # Apply color coding
-        styled_df = df.style.format({"Expérience": "{:.1f}"}).apply(highlight_rows, axis=1)
+        styled_df = df.drop(columns=["CV"], errors="ignore").style.format({"Expérience": "{:.1f}"}).apply(highlight_rows, axis=1)
 
-        # Afficher dans Streamlit
+        # Afficher dans Streamlit en excluant le CV car impossible d'afficher des données binaires
         st.dataframe(styled_df)
 
-        # Bouton pour mettre à jour la base de données
-        
+        # Mise à jour de la base de données
         if st.session_state["analysis_results"] is not None:
             with st.spinner("Mise à jour de la base de données en cours..."):
                 for candidate in st.session_state["analysis_results"].to_dict('records'):
