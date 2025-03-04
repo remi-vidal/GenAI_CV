@@ -1,153 +1,153 @@
 from bson import ObjectId
 import streamlit as st
 import pandas as pd
-from utils import generate_download_link
 from config import collection
 
+def get_applications(skip=0, limit=20, filters=None, sort_columns=None, sort_orders=None):
+    """
+    Retrieve applications from the MongoDB database with pagination, filters, and sorting.
+    """
+    query = {}
+    if filters:
+        query.update(filters)
+    
+    projection = {"CV": 0}  # Exclure le champ CV
 
-def get_applications():
-    """
-    Retrieve applications from the mongodb database and return them as a pandas DataFrame.
-    """
-    app_list = list(collection.find({}))
+    sort_criteria = []
+    if sort_columns and sort_orders:
+        sort_criteria = [(col, 1 if asc else -1) for col, asc in zip(sort_columns, sort_orders)]
+    
+    if sort_criteria:
+        app_list = list(collection.find(query, projection).sort(sort_criteria).skip(skip).limit(limit))
+    else:
+        app_list = list(collection.find(query, projection).skip(skip).limit(limit))
+    
     if app_list:
         df = pd.DataFrame(app_list)
         df["Téléphone"] = df["Téléphone"].apply(lambda x: str(x) if pd.notna(x) else "")
-        # Put "_id" column at the end
         cols = [col for col in df.columns if col != "_id"] + ["_id"]
         return df[cols]
     return pd.DataFrame()
 
 
 def gestion_page():
-
     st.title("Candidatures")
 
-    # # ⚡ Recharger la base MongoDB à chaque rechargement
-    # if "df" not in st.session_state:
-    st.session_state.df = get_applications()
+    if "page" not in st.session_state:
+        st.session_state.page = 0
 
-    df = st.session_state.df  # Utilisation du cache local
+    page_size = 20
+    skip = st.session_state.page * page_size
 
-    if not df.empty:
-        # FILTERS DEFINITION
-        col1, col2, col3 = st.columns(3)
+    STATUT_MAPPING = {
+        0: "🟡 Non traité",
+        -1: "❌ Refus",
+        1: "📨 Formulaire envoyé",
+        2: "🛠️ En cours de qualif.",
+        3: "✅ Go process"
+    }
 
-        STATUT_MAPPING = {
-            0: "🟡 Non traité",
-            -1: "❌ Refus",
-            1: "📨 Formulaire envoyé",
-            2: "🛠️ En cours de qualif.",
-            3: "✅ Go process"
-        }
-        statut_options = ["Tous"] + list(STATUT_MAPPING.values())
+    col1, col2, col3 = st.columns(3)
+    statut_options = ["Tous"] + list(STATUT_MAPPING.values())
+    with col1:
+        statut_filter = st.selectbox("📌 Statut", statut_options, on_change=lambda: st.session_state.update(page=0))
 
-        with col1:
-            statut_filter = st.selectbox("📌 Statut", statut_options)
+    with col2:
+        date_selection = st.date_input("📅 Période de candidature", value=[], format="DD/MM/YYYY", on_change=lambda: st.session_state.update(page=0))
 
-        with col2:
-            date_selection = st.date_input("📅 Période de candidature", value=[], format="DD/MM/YYYY")
+    with col3:
+        job_filter = st.selectbox("💼 Job", ["Tous"] + collection.distinct("Job"), on_change=lambda: st.session_state.update(page=0))
 
-        with col3:
-            job_filter = st.selectbox("💼 Job", ["Tous"] + df["Job"].dropna().unique().tolist())
+    col4, col5 = st.columns(2)
+    with col4:
+        freelance_filter = st.selectbox("👨‍💻 Freelance", ["Tous", "OUI", "NON"], index=0, on_change=lambda: st.session_state.update(page=0))
 
-        col4, col5 = st.columns(2)
-
-        with col4:
-            freelance_filter = st.selectbox("👨‍💻 Freelance", ["Tous"] + df["Freelance"].dropna().unique().tolist())
-
-        with col5:
-            df["Expérience"] = df["Expérience"].fillna(-1)  # Remplace NaN par -1
-            experience_min, experience_max = st.slider(
-                "📊 Expérience",
-                float(df["Expérience"].min()),
-                float(df["Expérience"].max()),
-                (float(df["Expérience"].min()), float(df["Expérience"].max()))
-            )
-
-        # APPLICATION DES FILTRES
-
-        if statut_filter != "Tous":
-            statut_numeric = {v: k for k, v in STATUT_MAPPING.items()}[statut_filter]
-            df = df[df["Statut"] == statut_numeric]
-
-        # Vérifier si l'utilisateur a sélectionné une période avant d'appliquer le filtre
-        if len(date_selection) == 2:
-            start_date, end_date = date_selection
-            # Convertir en Timestamp fixe l'heure à minuit :pour end_date, il est nécessaire 
-            # de rajouter 1 jour et soustraire 1 seconde pour inclure toute la journée
-            start_date = pd.Timestamp(start_date)
-            end_date = pd.Timestamp(end_date) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
-
-            df = df[(df["Date"] >= start_date) & (df["Date"] <= end_date)]
-
-
-        if job_filter != "Tous":
-            df = df[df["Job"] == job_filter]
-
-        # Fourchette expérience
-        df = df[(df["Expérience"] >= experience_min) & (df["Expérience"] <= experience_max)]
-        df["Expérience"] = df["Expérience"].replace(-1, float("nan"))  # Remettre NaN
-
-        if freelance_filter != "Tous":
-            df = df[df["Freelance"] == freelance_filter]
-
-        # Sélecteur de colonnes pour le tri
-        sort_columns = st.multiselect("↕️ Trier par :", df.columns, placeholder="Sélectionnez une ou plusieurs colonnes")
-
-        # Définir l'ordre de tri pour chaque colonne sélectionnée
-        sort_orders = [st.checkbox(f"Ordre croissant pour {col}", value=True) for col in sort_columns]
-
-        # Appliquer le tri selon l'ordre sélectionné
-        if sort_columns:
-            df = df.sort_values(by=sort_columns, ascending=sort_orders)
-
-        df = df.reset_index(drop=True)  # Évite la colonne d'index après filtrage
-
-        df["CV"] = df["_id"].apply(lambda oid: generate_download_link(collection.find_one({"_id": oid}).get("CV")))
-
-
-        # Création de colonnes pour afficher la DataFrame et les liens CV côte à côte
-        col_cv, col_df = st.columns([1, 30])  # Ajuste les proportions selon tes préférences
-
-        with col_cv:
-            st.markdown('<div style="height: 44px;"></div>', unsafe_allow_html=True)  # Ajoute un espace blanc
-            # Utilisation de st.markdown() pour rendre les liens cliquables
-            for i, row in df.iterrows():
-                st.markdown(
-            f'<div style="margin-bottom: 9.2px;">{row["CV"]}</div>', 
-            unsafe_allow_html=True
+    with col5:
+        experience_min, experience_max = st.slider(
+            "📊 Expérience (années)",
+            min_value=-1,
+            max_value=30,
+            value=(-1, 30),
+            step=1,
+            on_change=lambda: st.session_state.update(page=0),
         )
 
-        # Transformation des statuts en affichage lisible avec emojis
+    filters = {}
+    if statut_filter != "Tous":
+        filters["Statut"] = {v: k for k, v in STATUT_MAPPING.items()}[statut_filter]
+
+    if len(date_selection) == 2:
+        start_date, end_date = pd.Timestamp(date_selection[0]), pd.Timestamp(date_selection[1]) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+        filters["Date"] = {"$gte": start_date, "$lte": end_date}
+
+    if job_filter != "Tous":
+        filters["Job"] = job_filter
+
+    if freelance_filter == "OUI":
+        filters["Freelance"] = "OUI"
+    elif freelance_filter == "NON":
+        filters["Freelance"] = "NON"
+
+    filters["Expérience"] = {"$gte": experience_min, "$lte": experience_max}  # Expérience dans la plage sélectionnée
+
+    sort_columns = st.multiselect("↕️ Trier par :", collection.find_one().keys(), on_change=lambda: st.session_state.update(page=0))
+    sort_orders = [st.checkbox(f"Ordre croissant pour {col}", value=True, on_change=lambda: st.session_state.update(page=0)) for col in sort_columns]
+
+    df = get_applications(skip=skip, limit=page_size, filters=filters, sort_columns=sort_columns, sort_orders=sort_orders)
+
+    if not df.empty:
+
+        total_docs = collection.count_documents(filters)
+        total_pages = (total_docs // page_size) + (1 if total_docs % page_size != 0 else 0)
+        current_page = st.session_state.page + 1
+
+        col_pag1, col_pag2, col_pag3, col_pag4, col_pag5, col_pag6 = st.columns([13, 2, 1, 1, 1, 1])  # Ajuste la répartition des colonnes
+
+
+        with col_pag2:
+            st.write(f"Page {current_page}/{total_pages}")
+
+        with col_pag3:
+            if st.button("⏮️"):  # Aller à la première page
+                st.session_state.page = 0
+                st.rerun()
+
+        with col_pag4:
+            if st.button("⬅️") and st.session_state.page > 0:
+                st.session_state.page -= 1
+                st.rerun()
+
+        
+        with col_pag5:
+            if st.button("➡️") and len(df) == page_size:
+                st.session_state.page += 1
+                st.rerun()
+
+        with col_pag6:
+            total_docs = collection.count_documents(filters)  # Compte total des documents selon les filtres
+            last_page = (total_docs // page_size) if total_docs % page_size == 0 else (total_docs // page_size)
+            
+            if st.button("⏭️"):  # Aller à la dernière page
+                st.session_state.page = last_page
+                st.rerun()
+
         df["Statut"] = df["Statut"].map(STATUT_MAPPING)
 
-        # Options du menu déroulant (clé = affichage, valeur = stockage en base)
-        statut_options = {v: k for k, v in STATUT_MAPPING.items()}
+        edited_df = st.data_editor(
+            df,
+            column_config={
+                "Statut": st.column_config.SelectboxColumn(
+                    "Statut", options=list(STATUT_MAPPING.values()), required=True, pinned=True
+                ),
+                "Date": st.column_config.DatetimeColumn("Date", format="D MMM YYYY", step=60),
+            },
+            height=772,
+            num_rows="dynamic",
+        )
 
-        with col_df:
-        
-            edited_df = st.data_editor(
-                df.drop(columns=["CV"]),
-                column_config={
-                    "CV": st.column_config.TextColumn("CV", help="Cliquez pour télécharger"),
-                    "Date": st.column_config.DatetimeColumn(
-                        "Date", format="D MMM YYYY", step=60
-                    ),
-                    "Statut": st.column_config.SelectboxColumn(
-                        "Statut",
-                        options=list(statut_options.keys()),
-                        required=True,
-                        pinned=True,
-                    ),
-                },
-                height=2000,
-                # hide_index=True,
-                num_rows="dynamic",
-            )  # Édition interactive
 
         # Convertir les statuts affichés (emoji) en valeurs numériques avant enregistrement
-        edited_df["Statut"] = edited_df["Statut"].map(statut_options)
+        edited_df["Statut"] = edited_df["Statut"].map({v: k for k, v in STATUT_MAPPING.items()})
 
         # Sauvegarde des ID avant édition
         original_ids = set(df["_id"].astype(str))
@@ -159,23 +159,25 @@ def gestion_page():
         # Détection des suppressions
         deleted_ids = original_ids - remaining_ids  # Différence entre avant/après
 
-        # Vérification des modifications
-        if not edited_df.reset_index(drop=True).astype(str).equals(df.reset_index(drop=True).astype(str)) or deleted_ids:
-            if st.button("💾 Enregistrer les modifications"):
-                # Suppression des documents supprimés
-                for deleted_id in deleted_ids:
-                    collection.delete_one({"_id": ObjectId(deleted_id)})
+        with col_pag1:
+            # Vérification des modifications
+            if not edited_df.reset_index(drop=True).astype(str).equals(df.reset_index(drop=True).astype(str)) or deleted_ids:
+                if st.button("💾 Enregistrer les modifications"):
+                    # Suppression des documents supprimés
+                    for deleted_id in deleted_ids:
+                        collection.delete_one({"_id": ObjectId(deleted_id)})
 
-                # Mise à jour des documents modifiés
-                for _, row in edited_df.iterrows():
-                    obj_id = ObjectId(row["_id"])  # Convertir en ObjectId
-                    new_data = row.drop("_id").to_dict()  # Retirer l'ID
-                    collection.update_one({"_id": obj_id}, {"$set": new_data})
+                    # Mise à jour des documents modifiés
+                    for _, row in edited_df.iterrows():
+                        obj_id = ObjectId(row["_id"])  # Convertir en ObjectId
+                        new_data = row.drop("_id").to_dict()  # Retirer l'ID
+                        collection.update_one({"_id": obj_id}, {"$set": new_data})
 
-                # 🔄 Recharger immédiatement les données mises à jour
-                st.session_state.df = get_applications()
+                    # 🔄 Recharger immédiatement les données mises à jour
+                    st.session_state.df = get_applications()
 
-                # ✅ Redessiner Streamlit sans recharger toute la page
-                st.rerun()
+                    # ✅ Redessiner Streamlit sans recharger toute la page
+                    st.rerun()
+
     else:
         st.write("Aucun candidat trouvé.")
