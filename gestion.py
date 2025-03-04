@@ -1,22 +1,8 @@
 from bson import ObjectId
 import streamlit as st
 import pandas as pd
-from pymongo import MongoClient
-import os
 from utils import generate_download_link
-
-# from dotenv import load_dotenv
-# load_dotenv()
-# MONGO_URI = os.getenv("MONGO_URI")
-# client = MongoClient(MONGO_URI)
-# db = client["staging"]
-# collection = db["data_test"]
-
-
-MONGO_URI = st.secrets["MONGO_URI"]
-client = MongoClient(MONGO_URI)
-db = client["ats_database"]
-collection = db["candidatures"]
+from config import collection
 
 
 def get_applications():

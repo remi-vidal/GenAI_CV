@@ -6,29 +6,15 @@ import json
 import time
 import streamlit as st
 import shutil
-import google.generativeai as genai
 import google.api_core.exceptions
 import pandas as pd
 import extract_msg
 from google.generativeai.types import GenerationConfig
-from pymongo import MongoClient
 from bson import Binary
 from utils import *
+from config import collection, genai
 
-# from dotenv import load_dotenv
-# load_dotenv()  ## load all our environment variables
-# genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-# MONGO_URI = os.getenv("MONGO_URI")
-# client = MongoClient(MONGO_URI)
-# db = client["staging"]
-# collection = db["data_test"]
 
-api_key = st.secrets["GOOGLE_API_KEY"]
-genai.configure(api_key=api_key)
-MONGO_URI = st.secrets["MONGO_URI"]
-client = MongoClient(MONGO_URI)
-db = client["ats_database"]
-collection = db["candidatures"]
 
 def insert_into_mongo(data):
     """
