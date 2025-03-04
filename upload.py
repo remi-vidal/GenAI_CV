@@ -174,7 +174,7 @@ def upload_page():
                             "Téléphone": "N/A",
                             "Freelance": "OUI" if "freelance" in title.lower() else "N/A",
                             "Diplôme": "N/A",
-                            "Expérience": "",
+                            "Expérience": -1,
                             "Entreprises": "N/A",
                             "Compétences Tech": "N/A",
                         }
@@ -207,7 +207,7 @@ def upload_page():
                                 "Téléphone": "N/A",
                                 "Freelance": "OUI" if "freelance" in title.lower() else "N/A",
                                 "Diplôme": "N/A",
-                                "Expérience": "",
+                                "Expérience": -1,
                                 "Entreprises": "N/A",
                                 "Compétences Tech": "N/A",
                                 "CV": binary_pdf
