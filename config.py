@@ -6,7 +6,6 @@ import google.generativeai as genai
 import os
 from dotenv import load_dotenv
 load_dotenv()
-PASSWORD = os.getenv("PASSWORD")
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 MONGO_URI = os.getenv("MONGO_URI")
 client = MongoClient(MONGO_URI)

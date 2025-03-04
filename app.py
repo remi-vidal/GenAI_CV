@@ -1,8 +1,13 @@
+import os
 import streamlit as st
 from upload import upload_page
 from gestion import gestion_page
-from config import PASSWORD
 
+from dotenv import load_dotenv
+load_dotenv()
+PASSWORD = os.getenv("PASSWORD")
+
+# PASSWORD = st.secrets["PASSWORD"]
 
 st.set_page_config(layout="wide")  # Wide mode by default
 

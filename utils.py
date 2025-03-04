@@ -153,6 +153,12 @@ def anonymize_cv(text_cv, noms_from_email):
     email_match = re.search(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text_cv)
     extracted_email = email_match.group(0) if email_match else None
 
+    # Si un email est trouvé, on cherche à couper au niveau de l'extension après l'@
+    if extracted_email:
+        domain_match = re.search(r"@[^@]+(\.com|\.net|\.fr)", extracted_email)  # On cherche après l'@
+        if domain_match:
+            extracted_email = extracted_email[:domain_match.end()]  # Coupe après l'extension
+
     # 2. Extraction du numéro de téléphone avant anonymisation
     phone_pattern = re.compile(r'''
         (?<!\d)                     # Ne pas être précédé par un chiffre
