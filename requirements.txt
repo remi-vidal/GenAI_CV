@@ -1,5 +1,6 @@
 streamlit
 PyPDF2
+pdfplumber
 google.generativeai
 python-dotenv
 pandas

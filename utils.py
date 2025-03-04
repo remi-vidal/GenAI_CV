@@ -1,6 +1,7 @@
 import re
 import os
 import PyPDF2 as pdf
+import pdfplumber
 import logging
 import base64
 from bson.binary import Binary
@@ -90,7 +91,7 @@ def extract_linkedin_infos(message):
 
 def extract_text_from_pdf(file):
     """
-    Extracts text from a PDF file.
+    Extracts text from a PDF file. Using PyPDF2 if possible, otherwise using pdfplumber.
 
     Args:
         file (str): The path to the PDF file.
@@ -98,10 +99,19 @@ def extract_text_from_pdf(file):
     Returns:
         str: The extracted text from the PDF, with newlines replaced by spaces and leading/trailing whitespace removed.
     """
-    reader = pdf.PdfReader(file)
-    text = ""
-    for _, page in enumerate(reader.pages):
-        text += str(page.extract_text())
+    try : 
+        reader = pdf.PdfReader(file)
+        text = ""
+        for _, page in enumerate(reader.pages):
+            text += str(page.extract_text())
+            print('on passe dans le try')
+
+    except :
+        with pdfplumber.open(file) as pdf_p:
+            print('on passe dans lexcept')
+            text = " ".join(page.extract_text() or "" for page in pdf_p.pages)
+        
+
     text = text.replace("\x00", "").replace("\n", " ").strip()
     return text
 
