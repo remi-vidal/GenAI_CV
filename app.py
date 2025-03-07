@@ -2,7 +2,7 @@ import os
 import streamlit as st
 from upload import upload_page
 from gestion import gestion_page
-
+from stats import stats_page
 from dotenv import load_dotenv
 load_dotenv()
 PASSWORD = os.getenv("PASSWORD")
@@ -57,9 +57,12 @@ else:
         st.session_state["current_page"] = "Upload"
     if st.sidebar.button("🗂️ Candidatures"):
         st.session_state["current_page"] = "Applications"
-    
+    if st.sidebar.button("📊 Statistiques"):
+        st.session_state["current_page"] = "Statistiques"
     # Affichage de la page sélectionnée
     if st.session_state["current_page"] == "Upload":
         upload_page()
     elif st.session_state["current_page"] == "Applications":
         gestion_page()
+    elif st.session_state["current_page"] == "Statistiques":
+        stats_page()

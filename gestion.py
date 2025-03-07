@@ -122,7 +122,7 @@ def gestion_page():
 
     with col5:
         experience_min, experience_max = st.slider(
-            "📊 Expérience (années)",
+            "📈 Expérience (années)",
             min_value=-1,
             max_value=30,
             value=(-1, 30),
@@ -148,7 +148,7 @@ def gestion_page():
 
     filters["Expérience"] = {"$gte": experience_min, "$lte": experience_max}
 
-    ### TRIS ###   
+    ### SORT AND TEXTUAL FILTER ###   
 
     col_tri, col_search = st.columns(2)
 
@@ -226,7 +226,7 @@ def gestion_page():
         gb.configure_column("Compétences Tech", minWidth=400)  # Limite à 300 pixels
         gb.configure_column("Diplôme", maxWidth=100)  # Limite à 300 pixels
 
-        gb.configure_column("Expérience", maxWidth=130, filter=False)  # Limite à 300 pixels
+        gb.configure_column("Expérience", maxWidth=110, filter=False)  # Limite à 300 pixels
         gb.configure_column("Date", maxWidth = 150, type=["customDateTimeFormat"],
                             custom_format_string='dd MMM yyyy')  
         gb.configure_selection("multiple", use_checkbox=False)
