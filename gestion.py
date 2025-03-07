@@ -4,6 +4,14 @@ import pandas as pd
 from config import collection
 from st_aggrid import AgGrid, GridOptionsBuilder
 from streamlit_pdf_viewer import pdf_viewer
+import unicodedata
+
+def normalize(text):
+    """Supprime les accents et met en minuscule pour la recherche insensible."""
+    if text:
+        text = unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8')
+        return text.lower()
+    return ""
 
 @st.dialog("Fiche candidat")
 def open_fiche_candidat(candidate_id):
@@ -140,9 +148,28 @@ def gestion_page():
 
     filters["Expérience"] = {"$gte": experience_min, "$lte": experience_max}
 
-    ### TRIS ###
-    sort_columns = st.multiselect("↕️ Trier par :", collection.find_one().keys(), on_change=lambda: st.session_state.update(page=0))
-    sort_orders = [st.checkbox(f"Ordre croissant pour {col}", value=True, on_change=lambda: st.session_state.update(page=0)) for col in sort_columns]
+    ### TRIS ###   
+
+    col_tri, col_search = st.columns(2)
+
+    with col_tri:
+        sort_columns = st.multiselect("↕️ Trier par :", collection.find_one().keys(), placeholder = "Choisir une colonne", on_change=lambda: st.session_state.update(page=0))
+        sort_orders = [st.checkbox(f"Ordre croissant pour {col}", value=True, on_change=lambda: st.session_state.update(page=0)) for col in sort_columns]
+    
+    with col_search:
+        col_field, col_query = st.columns([2, 3])
+        with col_field:
+            searchable_columns = ["Nom", "Titre LinkedIn", "Compétences Tech", "Entreprises", "Adresse"]
+            selected_column = st.selectbox("🔍 Rechercher par :", searchable_columns)
+        with col_query:
+            # Champ de texte pour la recherche
+            search_query = st.text_input("Champ de recherche", placeholder="Entrez votre recherche...", label_visibility="hidden")
+
+    # Appliquer le filtre si une recherche est faite
+    if search_query:
+        search_normalized = normalize(search_query)
+        filters[selected_column] = {"$regex": search_normalized, "$options": "i"}
+
 
     ### LOADIND DATA
     df = load_data(skip, page_size, filters, sort_columns, sort_orders)
