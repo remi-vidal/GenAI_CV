@@ -1,5 +1,6 @@
 streamlit==1.42.0
 streamlit-aggrid
+streamlit_pdf_viewer
 PyPDF2
 pdfplumber
 google.generativeai
