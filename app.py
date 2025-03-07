@@ -3,15 +3,15 @@ import streamlit as st
 from upload import upload_page
 from gestion import gestion_page
 
-# from dotenv import load_dotenv
-# load_dotenv()
-# PASSWORD = os.getenv("PASSWORD")
+from dotenv import load_dotenv
+load_dotenv()
+PASSWORD = os.getenv("PASSWORD")
 
-PASSWORD = st.secrets["PASSWORD"]
+# PASSWORD = st.secrets["PASSWORD"]
 
 st.set_page_config(layout="wide")  # Wide mode by default
 
-# Inject custom CSS to set the width of the sidebar
+# Inject custom CSS to set the width of the sidebar and dialog
 st.markdown(
     """
     <style>
@@ -20,6 +20,11 @@ st.markdown(
             min-width: 50px;
             max-width: 250px;
         }
+        div[data-testid="stDialog"] div[role="dialog"] {
+            width: 90vw !important;  /* Largeur max raisonnable */
+            max-width: 90vw !important;  
+            height: 90vh !important;  /* Hauteur max raisonnable */
+            max-height: 90vh !important;
     </style>
     """,
     unsafe_allow_html=True,
