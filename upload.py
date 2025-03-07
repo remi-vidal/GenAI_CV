@@ -46,7 +46,10 @@ def get_gemini_response(input_text, max_retries=5, base_wait=30):
                 input_text,
                 generation_config=GenerationConfig(response_mime_type="application/json"),
             )
-            return json.loads(response.text)  # Retourne la réponse si tout va bien
+            # Corriger les backslashes mal échappés
+            response_text = response.text.replace(r"\&", "&")
+
+            return json.loads(response_text)  # Retourne la réponse si tout va bien
 
         except google.api_core.exceptions.ResourceExhausted:
             wait_time = base_wait * (2 ** attempt)  # Exponentiel : 30s, 60s, 120s, 240s...
@@ -220,6 +223,9 @@ def upload_page():
                         response = get_gemini_response(formatted_prompt)
                         print("Réponse : ", response)
                         
+                        # Check if we have all fields in LLM response
+                        response = validate_llm_response(response)
+
                         # Check for a "freelance" mention in LinkedIn title
                         is_freelance = "OUI" if "freelance" in title.lower() else response["Freelance"]
 

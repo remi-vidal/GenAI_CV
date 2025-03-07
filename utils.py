@@ -193,6 +193,26 @@ def anonymize_cv(text_cv, noms_from_email):
 
     return text_cv, extracted_email, extracted_phone  # On retourne le texte anonymisé + l'email et le numéro de téléphone extraits
 
+def validate_llm_response(response):
+    """
+    Vérifie que la réponse du LLM contient tous les champs attendus.
+    Si un champ est manquant, il est complété avec une valeur par défaut.
+    """
+    required_fields = {
+        "Freelance": "N/A",
+        "Année de diplomation": "N/A",
+        "Expérience": -1,
+        "Entreprises": "N/A",
+        "Compétences": "N/A"
+    }
+    
+    for field, default_value in required_fields.items():
+        if field not in response:
+            logging.warning(f"Champ manquant dans la réponse du LLM : {field}. Attribution de la valeur par défaut {default_value}.")
+            response[field] = default_value
+
+    return response
+
 
 def highlight_rows(row):
     color = ""
