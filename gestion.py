@@ -4,14 +4,6 @@ import pandas as pd
 from config import collection
 from st_aggrid import AgGrid, GridOptionsBuilder
 from streamlit_pdf_viewer import pdf_viewer
-import unicodedata
-
-def normalize(text):
-    """Supprime les accents et met en minuscule pour la recherche insensible."""
-    if text:
-        text = unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8')
-        return text.lower()
-    return ""
 
 @st.dialog("Fiche candidat")
 def open_fiche_candidat(candidate_id):
@@ -48,18 +40,29 @@ def get_applications(skip=0, limit=20, filters=None, sort_columns=None, sort_ord
     query = {}
     if filters:
         query.update(filters)
-    
+
     projection = {"CV": 0}  # Exclure le champ CV
 
     sort_criteria = []
     if sort_columns and sort_orders:
         sort_criteria = [(col, 1 if asc else -1) for col, asc in zip(sort_columns, sort_orders)]
-    
+
     if sort_criteria:
-        app_list = list(collection.find(query, projection).sort(sort_criteria).skip(skip).limit(limit))
+        app_list = list(
+            collection.find(query, projection)
+            .collation({"locale": "fr", "strength": 1})
+            .sort(sort_criteria)
+            .skip(skip)
+            .limit(limit)
+        )
     else:
-        app_list = list(collection.find(query, projection).skip(skip).limit(limit))
-    
+        app_list = list(
+            collection.find(query, projection)
+            .collation({"locale": "fr", "strength": 1})
+            .skip(skip)
+            .limit(limit)
+        )
+
     if app_list:
         df = pd.DataFrame(app_list)
         df["Téléphone"] = df["Téléphone"].apply(lambda x: str(x) if pd.notna(x) else "")
@@ -167,8 +170,7 @@ def gestion_page():
 
     # Appliquer le filtre si une recherche est faite
     if search_query:
-        search_normalized = normalize(search_query)
-        filters[selected_column] = {"$regex": search_normalized, "$options": "i"}
+        filters[selected_column] = {"$regex": search_query, "$options": "i"}
 
 
     ### LOADIND DATA
