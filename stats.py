@@ -3,7 +3,7 @@ import pandas as pd
 from config import collection
 
 def stats_page():
-    st.title("Statistiques")
+    st.title("Statistiques des candidatures")
 
     # Récupérer les données (en supposant que "Date" est au format Date)
     data = list(collection.find({}, {"_id": 0, "Job": 1, "Date": 1}))
@@ -21,7 +21,7 @@ def stats_page():
         df["Jour"] = df["Date"].dt.strftime("%Y-%m-%d")  # Ex: 2024-03-06
 
         # Affichage des stats
-        st.subheader("💼 Candidatures par Job Description")
+        st.subheader("Définition des filtres")
 
         # No filter by default 
         df_filtered = df.copy()
@@ -29,14 +29,15 @@ def stats_page():
         # Filtrage : Job + Groupe temporel + Période
         col1, col2, col3 = st.columns(3)  # Ajustement des largeurs
         with col1:
-            unique_jobs = ["Tous"] + sorted(df["Job"].dropna().unique())
-            selected_job = st.selectbox("Filtrer par Job Desc :", unique_jobs)
+            date_fourchette = st.date_input("📅 Période de candidature", value=[], format="DD/MM/YYYY")
 
         with col2:
-            time_dimension = st.selectbox("Grouper par :", ["Ne pas grouper (nombre total)", "Année", "Mois", "Jour"], index=0)
+            unique_jobs = ["Tous"] + sorted(df["Job"].dropna().unique())
+            selected_job = st.selectbox("Job Desc :", unique_jobs)
 
         with col3:
-            date_fourchette = st.date_input("📅 Période de candidature", value=[], format="DD/MM/YYYY")
+            time_dimension = st.selectbox("Grouper par :", ["Ne pas grouper (nombre total)", "Année", "Mois", "Jour"], index=0)
+            
 
         # Appliquer le filtre par Job
         if selected_job != "Tous":
@@ -62,14 +63,14 @@ def stats_page():
         count_by_month = df_filtered.groupby("Mois").size().reset_index(name="Nombre de candidatures")
         count_by_day = df_filtered.groupby("Jour").size().reset_index(name="Nombre de candidatures")
 
-        st.subheader("📅 Candidatures totales par année")
-        st.bar_chart(count_by_year.set_index("Année"))
+        st.subheader("📆 Candidatures par jour")
+        st.area_chart(count_by_day.set_index("Jour"))
 
-        st.subheader("📆 Candidatures totales par mois")
+        st.subheader("📆 Candidatures par mois")
         st.line_chart(count_by_month.set_index("Mois"))
 
-        st.subheader("📆 Candidatures totales par jour")
-        st.area_chart(count_by_day.set_index("Jour"))
+        st.subheader("📅 Candidatures par année")
+        st.bar_chart(count_by_year.set_index("Année"))
 
     else:
         st.warning("Aucune donnée disponible.")
