@@ -96,6 +96,10 @@ CV: {text}
 
 def upload_page():
     st.title("Import des CV")
+
+    # Checkbox pour activer/désactiver l'importation des CV
+    store_cv = st.checkbox("Stocker les CV dans la base de données", value=False)
+
     
     # Initialisation du stockage des résultats (#utile ?)
     if "analysis_results" not in st.session_state:
@@ -277,6 +281,8 @@ def upload_page():
         if st.session_state["analysis_results"] is not None:
             with st.spinner("Mise à jour de la base de données en cours..."):
                 for candidate in st.session_state["analysis_results"].to_dict('records'):
+                    if not store_cv:
+                        candidate.pop("CV", None)  # Supprime le champ CV si l'option est décochée
                     insert_into_mongo(candidate)
             st.success("Base de données mise à jour avec succès !")
         else:
